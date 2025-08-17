@@ -1,14 +1,19 @@
 // js/login.js (module)
 import { api } from "./api.js";
-import { setAuth, getToken } from "./auth.js";
+import { setAuth, getToken, getUser } from "./auth.js";
 
 function redirectAfterLogin() {
   const params = new URLSearchParams(location.search);
   const ret = params.get("return");
+
+  const u = getUser();
+  if (!ret && u?.role === "admin") {
+    location.href = "admin.html";
+    return;
+  }
   location.href = ret || "index.html";
 }
 
-// Backend yoksa: yerel users[] ile fallback login
 function localFallbackLogin(email, password) {
   try {
     const users = JSON.parse(localStorage.getItem("users") || "[]");
@@ -32,10 +37,18 @@ function localFallbackLogin(email, password) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Zaten girişliyse yönlendir
+  // Token varsa: SADECE geçerliyse yönlendir
   if (getToken()) {
-    redirectAfterLogin();
-    return;
+    (async () => {
+      try {
+        const me = await api("/auth/me", { auth: true });
+        setAuth({ user: me });
+        redirectAfterLogin();
+      } catch {
+        localStorage.removeItem("tiksepet_token");
+        localStorage.removeItem("tiksepet_user");
+      }
+    })();
   }
 
   const form = document.getElementById("login-form");
@@ -43,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
 
     const submitBtn = form.querySelector('button[type="submit"]');
-    const email = document.getElementById("email").value.trim().toLowerCase(); // önemli: register ile aynı
+    const email = document.getElementById("email").value.trim().toLowerCase();
     const password = document.getElementById("password").value.trim();
 
     if (!email || !password) {
@@ -54,7 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn?.setAttribute("disabled", "true");
 
     try {
-      // Önce gerçek API
       const data = await api("/auth/login", {
         method: "POST",
         body: { email, password },
@@ -62,15 +74,27 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!data?.token || !data?.user) throw new Error("Eksik yanıt");
       setAuth({ user: data.user, token: data.token });
       redirectAfterLogin();
-    } catch {
-      // API başarısızsa local fallback
+    } catch (err) {
+      const isNetworkError =
+        err instanceof TypeError ||
+        ("" + err.message).includes("Failed to fetch");
+
+      if (!isNetworkError) {
+        alert(err.message || "Giriş başarısız.");
+        submitBtn?.removeAttribute("disabled");
+        return;
+      }
+
       const ok = localFallbackLogin(email, password);
       if (!ok) {
-        alert("E-posta veya şifre hatalı!");
+        alert("Sunucuya ulaşılamıyor ve yerel giriş başarısız.");
         submitBtn?.removeAttribute("disabled");
         return;
       }
       redirectAfterLogin();
+    } finally {
+      // Eğer redirect olmadıysa buton kilitli kalmasın
+      submitBtn?.removeAttribute("disabled");
     }
   });
 });

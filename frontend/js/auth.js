@@ -34,15 +34,9 @@ export async function me() {
 /** Yalnızca admin erişimi */
 export async function requireAdmin() {
   const token = getToken();
-  if (!token) {
-    location.href = "login.html";
-    throw new Error("unauthorized");
-  }
+  if (!token) throw new Error("unauthorized");
   const u = await me().catch(() => null);
-  if (!u || u.role !== "admin") {
-    location.href = "index.html";
-    throw new Error("not-admin");
-  }
+  if (!u || u.role !== "admin") throw new Error("not-admin");
   return u;
 }
 
