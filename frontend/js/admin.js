@@ -15,19 +15,38 @@ const fmt = (n) =>
 
 // ---- Admin Guard & Navbar ----
 async function initAdminGuard() {
-  try {
-    await requireAdmin();
-    $("#admin-content").classList.remove("hidden");
-    $("#admin-guard").classList.add("hidden");
+  const guard = $("#admin-guard");
+  const content = $("#admin-content");
 
+  try {
+    // Admin mi?
+    await requireAdmin();
+
+    // GÖSTER / GİZLE işlemleri — kesin çözüm
+    if (content) {
+      content.classList.remove("hidden");
+      content.style.display = "grid"; // admin-grid için
+    }
+    if (guard) {
+      guard.classList.add("hidden");
+      guard.style.display = "none";
+    }
+
+    // Navbar ismi ve logout
     const u = await me().catch(() => null);
     const navName = $("#nav-username");
     if (u && navName) navName.textContent = `Admin: ${u.name || u.email}`;
-
     $("#logout-btn")?.addEventListener("click", logout);
   } catch {
-    $("#admin-content").classList.add("hidden");
-    $("#admin-guard").classList.remove("hidden");
+    // Yetkisiz ise sadece guard görünsün
+    if (content) {
+      content.classList.add("hidden");
+      content.style.display = "none";
+    }
+    if (guard) {
+      guard.classList.remove("hidden");
+      guard.style.display = "block";
+    }
     throw new Error("unauthorized");
   }
 }
@@ -101,11 +120,14 @@ async function loadProducts() {
   }
 }
 
+// ---- Modal ----
 function openModal() {
-  $("#modal-backdrop").style.display = "flex";
+  const backdrop = $("#modal-backdrop");
+  backdrop.style.display = "flex"; // aç
 }
 function closeModal() {
-  $("#modal-backdrop").style.display = "none";
+  const backdrop = $("#modal-backdrop");
+  backdrop.style.display = "none"; // kapat
   editingId = null;
   clearForm();
 }
@@ -143,21 +165,37 @@ function getFormData() {
 }
 
 async function saveProduct() {
-  const data = getFormData();
+  const title = $("#p-title").value.trim();
+  const price = $("#p-price").value;
+  if (!title || !price) {
+    alert("Başlık ve fiyat zorunludur.");
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append("title", title);
+  fd.append("price", price);
+
+  if ($("#p-category").value.trim())
+    fd.append("category", $("#p-category").value.trim());
+  if ($("#p-stock").value) fd.append("stock", $("#p-stock").value);
+  if ($("#p-rating").value) fd.append("rating", $("#p-rating").value);
+  if ($("#p-desc").value.trim())
+    fd.append("description", $("#p-desc").value.trim());
+
+  const file = $("#p-image-file").files?.[0];
+  const imageUrl = $("#p-image").value.trim();
+  if (file) {
+    fd.append("image", file);
+  } else if (imageUrl) {
+    fd.append("image_url", imageUrl);
+  }
+
   try {
-    if (!data.title || !data.price) {
-      alert("Başlık ve fiyat zorunludur.");
-      return;
-    }
-    if (editingId) {
-      await api(`/products/${editingId}`, {
-        method: "PUT",
-        auth: true,
-        body: data,
-      });
-    } else {
-      await api("/products", { method: "POST", auth: true, body: data });
-    }
+    const path = editingId ? `/products/${editingId}` : "/products";
+    const method = editingId ? "PUT" : "POST";
+
+    await api(path, { method, body: fd, auth: true });
     await loadProducts();
     closeModal();
   } catch (e) {
@@ -206,11 +244,21 @@ function renderOrders(rows = []) {
   }
   $("#orders-empty").classList.add("hidden");
 
+  // İngilizce → Türkçe map
+  const labels = {
+    pending: "Bekliyor",
+    paid: "Ödendi",
+    shipped: "Kargoda",
+    delivered: "Teslim",
+    cancelled: "İptal",
+  };
+
   for (const o of rows) {
     const tr = document.createElement("tr");
     const addr = [o.address, o.district, o.city, o.postal_code]
       .filter(Boolean)
       .join(", ");
+
     tr.innerHTML = `
       <td>${o.id}</td>
       <td>${o.user_email || o.user_name || "-"}</td>
@@ -218,16 +266,16 @@ function renderOrders(rows = []) {
       <td><div class="muted">${addr || "-"}</div><div class="muted">${
       o.phone || ""
     }</div></td>
-      <td><span class="badge">${o.status}</span></td>
+      <td><span class="badge">${labels[o.status] || o.status}</span></td>
       <td>${new Date(o.created_at).toLocaleString("tr-TR")}</td>
       <td class="right">
         <select class="order-status" data-id="${o.id}">
-          ${["pending", "paid", "shipped", "delivered", "cancelled"]
+          ${Object.entries(labels)
             .map(
-              (s) =>
-                `<option value="${s}" ${
-                  o.status === s ? "selected" : ""
-                }>${s}</option>`
+              ([val, label]) =>
+                `<option value="${val}" ${
+                  o.status === val ? "selected" : ""
+                }>${label}</option>`
             )
             .join("")}
         </select>
@@ -243,12 +291,12 @@ function renderOrders(rows = []) {
     b.addEventListener("click", async () => {
       const id = b.dataset.id;
       const sel = $(`select.order-status[data-id="${id}"]`);
-      const status = sel.value;
+      const status = sel.value; // İngilizce key
       try {
         await api(`/orders/${id}/status`, {
           method: "POST",
           auth: true,
-          body: { status },
+          body: { status }, // backend'e İngilizce key gider
         });
         await loadOrders();
       } catch (e) {

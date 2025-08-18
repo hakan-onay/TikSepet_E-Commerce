@@ -5,7 +5,14 @@ export async function api(
   path,
   { method = "GET", body, auth = false, headers = {} } = {}
 ) {
-  const h = { "Content-Type": "application/json", ...headers };
+  const h = { ...headers };
+
+  // Eğer body JSON ise Content-Type ekle
+  let finalBody = body;
+  if (body && !(body instanceof FormData)) {
+    h["Content-Type"] = "application/json";
+    finalBody = JSON.stringify(body);
+  }
 
   if (auth) {
     const token = localStorage.getItem("tiksepet_token");
@@ -15,7 +22,7 @@ export async function api(
   const res = await fetch(API_BASE + path, {
     method,
     headers: h,
-    body: body ? JSON.stringify(body) : undefined,
+    body: finalBody,
   });
 
   const text = await res.text();

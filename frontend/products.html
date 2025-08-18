@@ -71,107 +71,15 @@
         <!-- Filtre -->
         <div class="filter-bar">
           <input type="text" placeholder="Ürün ara..." class="search-input" />
-          <select class="category-filter">
-            <option value="all">Tüm Kategoriler</option>
-            <option value="elektronik">Elektronik</option>
-            <option value="giyim">Giyim</option>
-            <option value="aksesuar">Aksesuar</option>
+          <select id="category-filter" class="category-filter">
+            <option value="">Tüm Kategoriler</option>
+            <!-- Kategoriler dinamik olarak eklenecek -->
           </select>
         </div>
 
-        <!-- Ürün Grid (statik örnekler) -->
-        <div class="product-grid">
-          <!-- 1. Kart -->
-          <div class="product-card" data-category="elektronik">
-            <img src="assets/images/products/product1.jpg" alt="Akıllı Saat" />
-
-            <div class="card-body">
-              <span class="badge">Yeni</span>
-              <h3>Akıllı Saat</h3>
-              <p class="price">₺21.499,00</p>
-              <div class="rating" aria-label="Ürün puanı">
-                <span class="star">&#9733;</span>
-                <span class="star">&#9733;</span>
-                <span class="star">&#9733;</span>
-                <span class="star">&#9734;</span>
-                <span class="star">&#9734;</span>
-              </div>
-            </div>
-
-            <div class="card-footer">
-              <button
-                class="btn add-to-cart"
-                data-id="1"
-                data-name="Akıllı Saat"
-                data-price="21499.00"
-                data-image="assets/images/products/product1.jpg"
-              >
-                🛒 Sepete Ekle
-              </button>
-            </div>
-          </div>
-
-          <!-- 2. Kart -->
-          <div class="product-card" data-category="elektronik">
-            <img src="assets/images/products/product2.jpg" alt="Kulaklık" />
-            <div class="card-body">
-              <span class="badge">Yeni</span>
-              <h3>Kulaklık</h3>
-              <p class="price">₺29.999,00</p>
-              <div class="rating" aria-label="Ürün puanı">
-                <span class="star">&#9733;</span>
-                <span class="star">&#9733;</span>
-                <span class="star">&#9733;</span>
-                <span class="star">&#9733;</span>
-                <span class="star">&#9734;</span>
-              </div>
-            </div>
-
-            <div class="card-footer">
-              <button
-                class="btn add-to-cart"
-                data-id="2"
-                data-name="Kulaklık"
-                data-price="29999.00"
-                data-image="assets/images/products/product2.jpg"
-              >
-                🛒 Sepete Ekle
-              </button>
-            </div>
-          </div>
-
-          <!-- 3. Kart -->
-          <div class="product-card" data-category="elektronik">
-            <img
-              src="assets/images/products/product3.jpg"
-              alt="Bluetooth Hoparlör"
-            />
-
-            <div class="card-body">
-              <span class="badge">Yeni</span>
-              <h3>Bluetooth Hoparlör</h3>
-              <p class="price">₺16.659,02</p>
-              <div class="rating" aria-label="Ürün puanı">
-                <span class="star">&#9733;</span>
-                <span class="star">&#9733;</span>
-                <span class="star">&#9734;</span>
-                <span class="star">&#9734;</span>
-                <span class="star">&#9734;</span>
-              </div>
-            </div>
-
-            <div class="card-footer">
-              <button
-                class="btn add-to-cart"
-                data-id="3"
-                data-name="Bluetooth Hoparlör"
-                data-price="16659.02"
-                data-image="assets/images/products/product3.jpg"
-              >
-                🛒 Sepete Ekle
-              </button>
-            </div>
-          </div>
+        <!-- Ürün Grid (dinamik örnekler) -->
+        <div class="product-grid" id="product-grid">
+          <!-- Ürün kartları buraya eklenecek -->
         </div>
       </section>
     </main>
@@ -194,6 +102,6 @@
 
     <!-- JS: global sonra sayfa script’i -->
     <script src="js/main.js"></script>
-    <script src="js/products.js"></script>
+    <script type="module" src="js/products.js"></script>
   </body>
 </html>

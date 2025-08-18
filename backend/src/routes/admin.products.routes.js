@@ -5,6 +5,22 @@ const auth = require("../middlewares/auth");
 const isAdmin = require("../middlewares/isAdmin");
 const { ensureCategoryIdByName } = require("../utils/category");
 
+const multer = require("multer");
+const path = require("path");
+
+// ---- Multer storage ----
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "..", "uploads")); // /backend/uploads
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, unique + ext);
+  },
+});
+const upload = multer({ storage });
+
 const router = express.Router();
 
 /** GET /products?q=&category= */
@@ -28,7 +44,7 @@ router.get("/", auth, isAdmin, async (req, res) => {
 
     const [rows] = await pool.query(
       `
-      SELECT p.id, p.title, p.description, p.price, p.image_url,
+      SELECT p.id, p.title, p.description, p.price, p.image_path,
              p.stock, p.rating, c.name AS category
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
@@ -50,26 +66,27 @@ const productSchema = Joi.object({
   title: Joi.string().min(2).max(200).required(),
   description: Joi.string().allow(null, ""),
   price: Joi.number().precision(2).min(0).required(),
-  image_url: Joi.string().uri().allow(null, ""),
   stock: Joi.number().integer().min(0).default(0),
   rating: Joi.number().min(0).max(5).precision(1).default(0),
   category: Joi.string().allow(null, ""),
 });
 
-/** POST /products */
-router.post("/", auth, isAdmin, async (req, res) => {
+/** POST /products (fotoğraf dahil) */
+router.post("/", auth, isAdmin, upload.single("image"), async (req, res) => {
   try {
     const { value, error } = productSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });
 
     const category_id = await ensureCategoryIdByName(value.category);
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
+
     const [r] = await pool.query(
-      "INSERT INTO products (title, description, price, image_url, stock, rating, category_id) VALUES (?,?,?,?,?,?,?)",
+      "INSERT INTO products (title, description, price, image_path, stock, rating, category_id) VALUES (?,?,?,?,?,?,?)",
       [
         value.title,
         value.description || null,
         value.price,
-        value.image_url || null,
+        imagePath,
         value.stock ?? 0,
         value.rating ?? 0,
         category_id,
@@ -82,27 +99,32 @@ router.post("/", auth, isAdmin, async (req, res) => {
   }
 });
 
-/** PUT /products/:id */
-router.put("/:id", auth, isAdmin, async (req, res) => {
+/** PUT /products/:id (fotoğraf dahil) */
+router.put("/:id", auth, isAdmin, upload.single("image"), async (req, res) => {
   try {
     const { value, error } = productSchema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });
 
     const category_id = await ensureCategoryIdByName(value.category);
+    const imagePath = req.file
+      ? `/uploads/${req.file.filename}`
+      : req.body.existingImage || null;
+
     const [r] = await pool.query(
-      "UPDATE products SET title=?, description=?, price=?, image_url=?, stock=?, rating=?, category_id=? WHERE id=?",
+      "UPDATE products SET title=?, description=?, price=?, image_path=?, stock=?, rating=?, category_id=? WHERE id=?",
       [
         value.title,
         value.description || null,
         value.price,
-        value.image_url || null,
+        imagePath,
         value.stock ?? 0,
         value.rating ?? 0,
         category_id,
         req.params.id,
       ]
     );
-    if (r.affectedRows === 0) return res.status(404).json({ message: "Ürün bulunamadı" });
+    if (r.affectedRows === 0)
+      return res.status(404).json({ message: "Ürün bulunamadı" });
     res.json({ message: "Ürün güncellendi" });
   } catch (e) {
     console.error(e);
@@ -113,8 +135,11 @@ router.put("/:id", auth, isAdmin, async (req, res) => {
 /** DELETE /products/:id */
 router.delete("/:id", auth, isAdmin, async (req, res) => {
   try {
-    const [r] = await pool.query("DELETE FROM products WHERE id=?", [req.params.id]);
-    if (r.affectedRows === 0) return res.status(404).json({ message: "Ürün bulunamadı" });
+    const [r] = await pool.query("DELETE FROM products WHERE id=?", [
+      req.params.id,
+    ]);
+    if (r.affectedRows === 0)
+      return res.status(404).json({ message: "Ürün bulunamadı" });
     res.json({ message: "Ürün silindi" });
   } catch (e) {
     console.error(e);
