@@ -1,6 +1,8 @@
 // js/main.js (global, module değil)
 
+// ==============================
 // Header ve footer logolarını tema ile uyumlu tut
+// ==============================
 function updateHeaderLogo(theme) {
   const logo = document.getElementById("site-logo");
   if (!logo) return;
@@ -18,7 +20,9 @@ function updateFooterLogo(theme) {
       : "assets/images/logos/logo_light.png";
 }
 
+// ==============================
 // Tema yönetimi
+// ==============================
 function applyTheme(theme) {
   const root = document.body;
   if (theme === "dark") root.classList.add("dark");
@@ -41,13 +45,17 @@ function toggleTheme() {
   applyTheme(next);
 }
 
+// ==============================
 // Menü (mobil)
+// ==============================
 function toggleMenu() {
   const nav = document.getElementById("navLinks");
   if (nav) nav.classList.toggle("active");
 }
 
+// ==============================
 // Sepet rozeti
+// ==============================
 function updateCartCount() {
   const cart = JSON.parse(localStorage.getItem("cart") || "[]");
   const el = document.getElementById("cart-count");
@@ -69,17 +77,67 @@ function updateCartCount() {
     _setItem.apply(this, arguments);
     if (key === "cart" && oldVal !== value)
       window.dispatchEvent(new Event("cart-changed"));
+    if (
+      (key === "tiksepet_token" || key === "tiksepet_user") &&
+      oldVal !== value
+    )
+      window.dispatchEvent(new Event("auth-changed"));
   };
   localStorage.removeItem = function (key) {
     _removeItem.apply(this, arguments);
     if (key === "cart") window.dispatchEvent(new Event("cart-changed"));
+    if (key === "tiksepet_token" || key === "tiksepet_user")
+      window.dispatchEvent(new Event("auth-changed"));
   };
   window.addEventListener("storage", (e) => {
     if (e.key === "cart") window.dispatchEvent(new Event("cart-changed"));
+    if (e.key === "tiksepet_token" || e.key === "tiksepet_user")
+      window.dispatchEvent(new Event("auth-changed"));
   });
 })();
 
+// ==============================
+// Hesap menüsü (login/register ↔ userDropdown)
+// ==============================
+function updateAccountMenu() {
+  // Gerçek anahtar: tiksepet_token (eski alışkanlık varsa 'token' da bak)
+  const token =
+    localStorage.getItem("tiksepet_token") ||
+    localStorage.getItem("token") ||
+    null;
+
+  const loginLink = document.getElementById("loginLink");
+  const registerLink = document.getElementById("registerLink");
+  const userDropdown = document.getElementById("userDropdown");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  if (token) {
+    loginLink?.classList.add("hidden");
+    registerLink?.classList.add("hidden");
+    userDropdown?.classList.remove("hidden");
+  } else {
+    loginLink?.classList.remove("hidden");
+    registerLink?.classList.remove("hidden");
+    userDropdown?.classList.add("hidden");
+  }
+
+  // Logout (çift dinlemeyi engelle)
+  if (logoutBtn && !logoutBtn.dataset.bound) {
+    logoutBtn.dataset.bound = "1";
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("tiksepet_token");
+      localStorage.removeItem("tiksepet_user");
+      localStorage.removeItem("token"); // olası eski anahtar
+      updateAccountMenu();
+      location.href = "index.html";
+    });
+  }
+}
+
+// ==============================
 // INIT (tüm sayfalarda)
+// ==============================
 document.addEventListener("DOMContentLoaded", () => {
   // Tema
   applyTheme(resolveInitialTheme());
@@ -99,17 +157,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Sepet rozeti
   updateCartCount();
+
+  // Hesap menüsü kontrol
+  updateAccountMenu();
 });
 
+// ==============================
 // Loader
+// ==============================
 window.addEventListener("load", () => {
   const loader = document.getElementById("loader");
   if (loader) loader.style.display = "none";
 });
 
-// Rozeti canlı tut
+// Canlı dinleyiciler
 window.addEventListener("cart-changed", updateCartCount);
+window.addEventListener("auth-changed", updateAccountMenu);
 
 // Eski inline çağrımlar bozulmasın diye:
 window.toggleTheme = toggleTheme;
 window.toggleMenu = toggleMenu;
+// 👇 Hesap menüsünü globale aç (login.js'ten çağırabilmek için)
+window.updateAccountMenu = updateAccountMenu;

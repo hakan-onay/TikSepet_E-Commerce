@@ -1,12 +1,129 @@
 // js/profile.js (module)
+"use strict";
+
 import { api } from "./api.js";
 import { getAuth, clearAuth } from "./auth.js";
 
+/* ========== Helpers ========== */
 function fmtTRY(n) {
   return (Number(n) || 0).toLocaleString("tr-TR", {
     style: "currency",
     currency: "TRY",
   });
+}
+
+function statusToTR(s) {
+  switch ((s || "").toLowerCase()) {
+    case "pending":
+      return "Bekliyor";
+    case "paid":
+      return "Ödendi";
+    case "shipped":
+      return "Kargoda";
+    case "delivered":
+      return "Teslim";
+    case "cancelled":
+      return "İptal";
+    default:
+      return s || "-";
+  }
+}
+
+/* ========== UI fill ========== */
+function fillUserHeader(user) {
+  const nameEl = document.getElementById("u-name");
+  const emailEl = document.getElementById("u-email");
+  if (nameEl) nameEl.textContent = user?.name || "—";
+  if (emailEl) emailEl.textContent = user?.email || "—";
+}
+
+/* ========== Orders render ========== */
+function renderOrders(rows = []) {
+  // Tercihen .orders .order-list kullan; yoksa #order-list fallback
+  const wrap =
+    document.querySelector(".orders .order-list") ||
+    document.getElementById("order-list");
+  const empty =
+    document.querySelector(".orders #orders-empty") ||
+    document.getElementById("orders-empty");
+
+  if (!wrap) return;
+
+  wrap.innerHTML = "";
+
+  if (!rows.length) {
+    if (empty) {
+      empty.style.display = "block";
+      empty.innerHTML = "Henüz siparişiniz yok.";
+    } else {
+      wrap.innerHTML = '<div class="empty-state">Henüz siparişiniz yok.</div>';
+    }
+    return;
+  }
+  if (empty) empty.style.display = "none";
+
+  for (const o of rows) {
+    const when = o.created_at
+      ? new Date(o.created_at).toLocaleString("tr-TR")
+      : "-";
+    const items = Array.isArray(o.items) ? o.items : [];
+
+    const itemsHtml = items
+      .map(
+        (it) => `
+        <div style="display:flex; gap:8px; align-items:center; margin:4px 0;">
+          <img
+            src="${
+              it.image_path
+                ? `http://localhost:5000${it.image_path}`
+                : "assets/images/products/placeholder.png"
+            }"
+            alt="${it.title || "Ürün"}"
+            style="width:40px;height:40px;object-fit:contain;border:1px solid #eee;border-radius:6px;background:#fff"
+          />
+          <div>
+            <div>${it.title || "Ürün"} <strong>x${it.quantity}</strong></div>
+            <div class="muted" style="font-size:.9rem">${fmtTRY(
+              it.unit_price
+            )}</div>
+          </div>
+        </div>`
+      )
+      .join("");
+
+    const el = document.createElement("div");
+    el.className = "order-item";
+    el.innerHTML = `
+      <div class="order-info">
+        <div><strong>#${
+          o.id
+        }</strong> • ${when} • <span class="badge">${statusToTR(
+      o.status
+    )}</span></div>
+        <div>Toplam: <strong>${fmtTRY(o.total)}</strong></div>
+        <div style="margin-top:8px">${itemsHtml}</div>
+      </div>
+    `;
+    wrap.appendChild(el);
+  }
+}
+
+/* ========== Data loaders ========== */
+async function loadMyOrders() {
+  try {
+    // api() içinde auth:true => localStorage'daki token'ı otomatik ekler
+    const rows = await api("/orders/my", { auth: true });
+    renderOrders(rows || []);
+  } catch (e) {
+    const wrap =
+      document.querySelector(".orders .order-list") ||
+      document.getElementById("order-list");
+    if (wrap) {
+      wrap.innerHTML = `<div class="empty-state">Siparişler çekilemedi: ${
+        e?.message || e
+      }</div>`;
+    }
+  }
 }
 
 async function loadUserData() {
@@ -17,70 +134,14 @@ async function loadUserData() {
     )}`;
     return;
   }
-
-  // Kullanıcı bilgisi
-  document.getElementById("u-name").textContent = auth.user.name || "—";
-  document.getElementById("u-email").textContent = auth.user.email || "—";
-
-  try {
-    // Backend sipariş listesi denemesi
-    const orders = await api("/orders/my", { token: auth.token });
-    renderOrders(orders || []);
-  } catch {
-    // Backend yoksa local fallback
-    const allOrders = JSON.parse(localStorage.getItem("orders") || "[]");
-    const myOrders = allOrders
-      .filter((o) => String(o.userId) === String(auth.user.id))
-      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-    renderOrders(myOrders);
-  }
+  fillUserHeader(auth.user);
+  await loadMyOrders();
 }
 
-function renderOrders(orderList) {
-  const list = document.getElementById("order-list");
-  const emptyState = document.getElementById("orders-empty");
-
-  list.innerHTML = "";
-  if (!orderList.length) {
-    emptyState.style.display = "block";
-    return;
-  }
-  emptyState.style.display = "none";
-
-  orderList.forEach((o) => {
-    const itemsCount = (o.items || []).reduce(
-      (acc, it) => acc + (it.quantity || 1),
-      0
-    );
-    const el = document.createElement("div");
-    el.className = "order-item";
-    el.innerHTML = `
-      <div class="order-info">
-        <div><strong>Sipariş No:</strong> ${o.id}</div>
-        <div><strong>Tarih:</strong> ${new Date(
-          o.date || o.createdAt
-        ).toLocaleString("tr-TR")}</div>
-        <div><strong>Ödeme:</strong> ${
-          o.paymentMethod === "cash" ? "Kapıda Ödeme" : "Kart"
-        }</div>
-        <div><strong>Ürün Adedi:</strong> ${itemsCount}</div>
-        <div><strong>Toplam:</strong> ${fmtTRY(o.total || 0)}</div>
-      </div>
-      <div class="order-actions">
-        <a href="order-confirmation.html">Detay</a>
-      </div>
-    `;
-    el.querySelector(".order-actions a").addEventListener("click", (e) => {
-      e.preventDefault();
-      localStorage.setItem("latestOrder", JSON.stringify(o));
-      location.href = "order-confirmation.html";
-    });
-    list.appendChild(el);
-  });
-}
-
+/* ========== Init ========== */
 document.addEventListener("DOMContentLoaded", () => {
   loadUserData();
+
   document.getElementById("logout-btn")?.addEventListener("click", () => {
     clearAuth();
     location.href = "index.html";

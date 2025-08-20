@@ -9,6 +9,7 @@ const authRoutes = require("./routes/auth.routes");
 const adminProductsRoutes = require("./routes/admin.products.routes");
 const adminOrdersRoutes = require("./routes/admin.orders.routes");
 const productsPublicRoutes = require("./routes/products.public.routes");
+const ordersRoutes = require("./routes/orders.routes");
 
 const app = express();
 
@@ -37,9 +38,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // API mount'lar — ***/api prefix***
 app.use("/api/auth", authRoutes);
-app.use("/api/products", adminProductsRoutes);
-app.use("/api/orders", adminOrdersRoutes);
+app.use("/api/admin/products", adminProductsRoutes);
+app.use("/api/admin/orders", adminOrdersRoutes); // admin ayrı
 app.use("/api/public/products", productsPublicRoutes);
+app.use("/api/orders", ordersRoutes); // kullanıcı siparişleri
 
 // 404
 app.use((req, res) => res.status(404).json({ message: "Not found" }));

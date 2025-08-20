@@ -30,6 +30,9 @@ function localFallbackLogin(email, password) {
     };
     const token = "local_" + Math.random().toString(36).slice(2);
     setAuth({ user, token });
+
+    // Menü hemen güncellensin (redirect öncesi)
+    window.updateAccountMenu?.();
     return true;
   } catch {
     return false;
@@ -43,10 +46,12 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const me = await api("/auth/me", { auth: true });
         setAuth({ user: me });
+        window.updateAccountMenu?.();
         redirectAfterLogin();
       } catch {
         localStorage.removeItem("tiksepet_token");
         localStorage.removeItem("tiksepet_user");
+        window.updateAccountMenu?.();
       }
     })();
   }
@@ -72,7 +77,12 @@ document.addEventListener("DOMContentLoaded", () => {
         body: { email, password },
       });
       if (!data?.token || !data?.user) throw new Error("Eksik yanıt");
+
       setAuth({ user: data.user, token: data.token });
+
+      // Menü hemen güncellensin (redirect öncesi)
+      window.updateAccountMenu?.();
+
       redirectAfterLogin();
     } catch (err) {
       const isNetworkError =

@@ -1419,3 +1419,74 @@ td.right {
     padding: 20px;
   }
 }
+
+/* =========================
+   Hesap Menüsü (Login / Profil)
+   ========================= */
+.account-menu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.account-menu a {
+  color: var(--text);
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.account-menu a:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Dropdown */
+.dropdown {
+  position: relative;
+}
+
+.dropbtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dropdown-content {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  display: none;
+  flex-direction: column;
+  min-width: 160px;
+  z-index: 100;
+}
+
+.dropdown-content a {
+  padding: 10px 14px;
+  display: block;
+  color: var(--text-color);
+}
+
+.dropdown-content a:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.dropdown:hover .dropdown-content,
+.dropdown:focus-within .dropdown-content {
+  display: flex;
+}
+
+
+/* Giriş yapılmadığında gizli */
+.hidden {
+  display: none !important;
+}

@@ -19,13 +19,12 @@ async function initAdminGuard() {
   const content = $("#admin-content");
 
   try {
-    // Admin mi?
     await requireAdmin();
 
-    // GÖSTER / GİZLE işlemleri — kesin çözüm
+    // GÖSTER / GİZLE işlemleri
     if (content) {
       content.classList.remove("hidden");
-      content.style.display = "grid"; // admin-grid için
+      content.style.display = "grid";
     }
     if (guard) {
       guard.classList.add("hidden");
@@ -38,7 +37,6 @@ async function initAdminGuard() {
     if (u && navName) navName.textContent = `Admin: ${u.name || u.email}`;
     $("#logout-btn")?.addEventListener("click", logout);
   } catch {
-    // Yetkisiz ise sadece guard görünsün
     if (content) {
       content.classList.add("hidden");
       content.style.display = "none";
@@ -58,7 +56,7 @@ async function fetchProducts() {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (category) params.set("category", category);
-  return api(`/products?${params.toString()}`, { auth: true });
+  return api(`/admin/products?${params.toString()}`, { auth: true });
 }
 
 function renderProducts(rows = []) {
@@ -94,7 +92,7 @@ function renderProducts(rows = []) {
       <td>${p.stock ?? 0}</td>
       <td>${p.rating ?? 0}</td>
       <td>${
-        p.image_url ? `<a href="${p.image_url}" target="_blank">Gör</a>` : "-"
+        p.image_path ? `<a href="${p.image_path}" target="_blank">Gör</a>` : "-"
       }</td>
       <td class="right">
         <button class="btn ghost btn-edit" data-id="${p.id}">Düzenle</button>
@@ -122,12 +120,10 @@ async function loadProducts() {
 
 // ---- Modal ----
 function openModal() {
-  const backdrop = $("#modal-backdrop");
-  backdrop.style.display = "flex"; // aç
+  $("#modal-backdrop").style.display = "flex";
 }
 function closeModal() {
-  const backdrop = $("#modal-backdrop");
-  backdrop.style.display = "none"; // kapat
+  $("#modal-backdrop").style.display = "none";
   editingId = null;
   clearForm();
 }
@@ -148,20 +144,8 @@ function fillForm(p) {
   $("#p-price").value = p.price || "";
   $("#p-stock").value = p.stock || 0;
   $("#p-rating").value = p.rating || 0;
-  $("#p-image").value = p.image_url || "";
+  $("#p-image").value = p.image_path || "";
   $("#p-desc").value = p.description || "";
-}
-
-function getFormData() {
-  return {
-    title: $("#p-title").value.trim(),
-    category: $("#p-category").value.trim() || null,
-    price: parseFloat($("#p-price").value || "0"),
-    stock: parseInt($("#p-stock").value || "0", 10),
-    rating: parseFloat($("#p-rating").value || "0"),
-    image_url: $("#p-image").value.trim() || null,
-    description: $("#p-desc").value.trim() || null,
-  };
 }
 
 async function saveProduct() {
@@ -192,9 +176,8 @@ async function saveProduct() {
   }
 
   try {
-    const path = editingId ? `/products/${editingId}` : "/products";
+    const path = editingId ? `/admin/products/${editingId}` : "/admin/products";
     const method = editingId ? "PUT" : "POST";
-
     await api(path, { method, body: fd, auth: true });
     await loadProducts();
     closeModal();
@@ -205,7 +188,7 @@ async function saveProduct() {
 
 async function openEdit(id) {
   try {
-    const rows = await api(`/products`, { auth: true });
+    const rows = await api(`/admin/products`, { auth: true });
     const p = rows.find((r) => r.id == id);
     if (!p) return alert("Ürün bulunamadı");
     editingId = id;
@@ -220,7 +203,7 @@ async function openEdit(id) {
 async function delProduct(id) {
   if (!confirm(`#${id} ürün silinsin mi?`)) return;
   try {
-    await api(`/products/${id}`, { method: "DELETE", auth: true });
+    await api(`/admin/products/${id}`, { method: "DELETE", auth: true });
     await loadProducts();
   } catch (e) {
     alert("Silme hatası: " + (e.message || e));
@@ -232,7 +215,7 @@ async function fetchOrders() {
   const status = $("#status-filter")?.value || "";
   const params = new URLSearchParams();
   if (status) params.set("status", status);
-  return api(`/orders?${params.toString()}`, { auth: true });
+  return api(`/admin/orders?${params.toString()}`, { auth: true });
 }
 
 function renderOrders(rows = []) {
@@ -244,7 +227,6 @@ function renderOrders(rows = []) {
   }
   $("#orders-empty").classList.add("hidden");
 
-  // İngilizce → Türkçe map
   const labels = {
     pending: "Bekliyor",
     paid: "Ödendi",
@@ -291,12 +273,12 @@ function renderOrders(rows = []) {
     b.addEventListener("click", async () => {
       const id = b.dataset.id;
       const sel = $(`select.order-status[data-id="${id}"]`);
-      const status = sel.value; // İngilizce key
+      const status = sel.value;
       try {
-        await api(`/orders/${id}/status`, {
-          method: "POST",
+        await api(`/admin/orders/${id}/status`, {
+          method: "POST", // backend PUT/PATCH destekliyorsa değiştir
           auth: true,
-          body: { status }, // backend'e İngilizce key gider
+          body: { status },
         });
         await loadOrders();
       } catch (e) {

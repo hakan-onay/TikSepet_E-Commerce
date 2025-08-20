@@ -1,5 +1,7 @@
 "use strict";
 
+import { api } from "./api.js";
+
 /* ===== Utils ===== */
 const fmtTRY = (n) =>
   (Number(n) || 0).toLocaleString("tr-TR", {
@@ -14,6 +16,13 @@ const getCart = () => {
     return [];
   }
 };
+
+function buildOrderItemsFromCart(cart) {
+  return cart.map((it) => ({
+    product_id: Number(it.id),
+    quantity: parseInt(it.quantity || 1, 10),
+  }));
+}
 
 /* ===== Guard: sepet + login ===== */
 function isLoggedIn() {
@@ -159,7 +168,6 @@ function validateCardFields() {
     alert("CVV 3 veya 4 haneli olmalı.");
     return false;
   }
-  // Ay/yıl geçmiş mi kontrol (basit)
   const now = new Date();
   const exp = new Date(y, m - 1, 1);
   if (exp < new Date(now.getFullYear(), now.getMonth(), 1)) {
@@ -169,12 +177,21 @@ function validateCardFields() {
   return true;
 }
 
-/* ===== Form submit ===== */
+/* ===== Submit ===== */
+async function submitOrder(payload) {
+  // Burada api.js backend’e token’lı fetch atıyor
+  return api("/orders", {
+    method: "POST",
+    body: payload,
+    auth: true,
+  });
+}
+
 function wireSubmit() {
   const form = document.getElementById("checkout-form");
   if (!form) return;
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const firstName = document.getElementById("first-name").value.trim();
@@ -202,18 +219,12 @@ function wireSubmit() {
     if (payment === "card" && !validateCardFields()) return;
 
     const cart = getCart();
-    let total = 0;
-    for (const it of cart)
-      total += (Number(it.price) || 0) * (parseInt(it.quantity || 1, 10) || 1);
+    if (!cart.length) {
+      alert("Sepet boş.");
+      return;
+    }
 
-    
-    const nowISO = new Date().toISOString();
-
-    const newOrder = {
-      id: Date.now(),
-      userId: localStorage.getItem("tiksepet_user")
-        ? JSON.parse(localStorage.getItem("tiksepet_user")).id
-        : "guest",
+    const payload = {
       name: `${firstName} ${lastName}`,
       email,
       phone,
@@ -221,30 +232,31 @@ function wireSubmit() {
       district,
       address,
       paymentMethod: payment,
-      items: cart,
-      total,
-      // >>> tarih alanlarını uyumlu yaz
-      date: nowISO,
-      createdAt: nowISO,
-      status: "pending",
+      items: buildOrderItemsFromCart(cart),
     };
 
-    // Şimdilik localStorage'a yazıyoruz (backend gelince API'ye göndereceğiz)
-    const orders = JSON.parse(localStorage.getItem("orders") || "[]");
-    orders.push(newOrder);
-    localStorage.setItem("orders", JSON.stringify(orders));
-    localStorage.setItem("latestOrder", JSON.stringify(newOrder));
-
-    // Sepeti boşalt, özete geç
-    localStorage.removeItem("cart");
-    location.href = "order-confirmation.html";
+    try {
+      const created = await submitOrder(payload); // backend {id, total, status} döner
+      localStorage.setItem(
+        "latestOrder",
+        JSON.stringify({
+          id: created.id,
+          total: created.total,
+          paymentMethod: payment,
+          date: new Date().toISOString(),
+        })
+      );
+      localStorage.removeItem("cart");
+      location.href = "order-confirmation.html";
+    } catch (err) {
+      alert("Sipariş oluşturulamadı: " + (err?.message || err));
+    }
   });
 }
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", () => {
   if (!guardCheckout()) return;
-
   renderOrderSummary();
   wirePaymentMethod();
   wireMasks();

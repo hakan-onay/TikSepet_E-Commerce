@@ -21,6 +21,7 @@
     <!-- Navbar -->
     <header>
       <nav class="navbar">
+        <!-- Logo -->
         <a href="index.html" class="logo">
           <img
             src="assets/images/logos/logo_light.png"
@@ -28,18 +29,21 @@
             id="site-logo"
           />
         </a>
+
+        <!-- Orta Menü -->
         <ul class="nav-links" id="navLinks">
           <li><a href="index.html" class="active">Anasayfa</a></li>
           <li><a href="products.html">Ürünler</a></li>
           <li>
-            <a href="cart.html"
-              >Sepet <span id="cart-count" class="cart-count">0</span></a
-            >
+            <a href="cart.html">
+              🛒 Sepet <span id="cart-count" class="cart-count">0</span>
+            </a>
           </li>
-          <li><a href="profile.html">Profil</a></li>
-          <li><a href="admin.html">Admin</a></li>
         </ul>
+
+        <!-- Sağ Taraf -->
         <div class="nav-right">
+          <!-- Tema butonu -->
           <button
             id="theme-toggle"
             class="theme-toggle"
@@ -48,9 +52,26 @@
           >
             🌓
           </button>
+
+          <!-- Hesap menüsü -->
+          <div class="account-menu" id="accountMenu">
+            <a href="login.html" id="loginLink">Giriş Yap</a>
+            <a href="register.html" id="registerLink">Kayıt Ol</a>
+            <!-- Kullanıcı giriş yaptıysa şu görünecek -->
+            <div id="userDropdown" class="dropdown hidden">
+              <button class="dropbtn">👤 Hesabım ▾</button>
+              <div class="dropdown-content">
+                <a href="profile.html">Profil</a>
+                <a href="orders.html">Siparişlerim</a>
+                <a href="#" id="logoutBtn">Çıkış Yap</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hamburger -->
           <div
-            class="nav-toggle"
             id="hamburger"
+            class="nav-toggle"
             role="button"
             tabindex="0"
             aria-label="Menüyü aç/kapat"
