@@ -109,13 +109,17 @@ function productCard(p) {
 
   const cat = (p.category || "").toLowerCase();
   return `
-  <div class="product-card" data-id="${p.id}" data-category="${cat}">
+  <div class="product-card" data-id="${
+    p.id
+  }" data-category="${cat}" data-rating="${p.rating || 0}">
     <img src="${img}" alt="${p.title || "Ürün"}" />
     <div class="card-body">
       ${p.category ? `<span class="badge">${p.category}</span>` : ""}
       <h3 title="${p.title || ""}">${p.title || "-"}</h3>
       <p class="price">${fmtTRY(p.price)}</p>
-      <div class="rating" aria-label="Ürün puanı">${starsHTML(p.rating)}</div>
+      <div class="rating" data-rating="${
+        p.rating
+      }" aria-label="Ürün puanı">${starsHTML(p.rating)}</div>
     </div>
     <div class="card-footer">
       <button
@@ -256,22 +260,40 @@ function applyClientFilters() {
     const okCat = cat === "all" || c === cat;
     card.style.display = okSearch && okCat ? "" : "none";
   }
+
   if (sortEl) {
-    const mode = sortEl.value; // default | price-asc | price-desc
+    const mode = sortEl.value; // default | price-asc | price-desc | rating-asc | rating-desc
     if (mode !== "default") {
       const grid = gridEl;
       const visible = $$(".product-card").filter(
         (c) => c.style.display !== "none"
       );
+
       visible.sort((a, b) => {
-        const pa = Number(
-          a.querySelector(".add-to-cart")?.dataset.price || "0"
-        );
-        const pb = Number(
-          b.querySelector(".add-to-cart")?.dataset.price || "0"
-        );
-        return mode === "price-asc" ? pa - pb : pb - pa;
+        if (mode.startsWith("price")) {
+          const pa = Number(
+            a.querySelector(".add-to-cart")?.dataset.price || "0"
+          );
+          const pb = Number(
+            b.querySelector(".add-to-cart")?.dataset.price || "0"
+          );
+          return mode === "price-asc" ? pa - pb : pb - pa;
+        } else if (mode.startsWith("rating")) {
+          const ra = Number(
+            a.dataset.rating ||
+              a.querySelector(".rating")?.dataset.rating ||
+              "0"
+          );
+          const rb = Number(
+            b.dataset.rating ||
+              b.querySelector(".rating")?.dataset.rating ||
+              "0"
+          );
+          return mode === "rating-asc" ? ra - rb : rb - ra;
+        }
+        return 0;
       });
+
       visible.forEach((c) => grid.appendChild(c));
     }
   }

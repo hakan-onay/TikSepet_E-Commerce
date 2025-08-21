@@ -89,10 +89,22 @@
 
         <!-- Filtre -->
         <div class="filter-bar">
+          <!-- Arama kutusu -->
           <input type="text" placeholder="Ürün ara..." class="search-input" />
+
+          <!-- Kategori seçici -->
           <select id="category-filter" class="category-filter">
             <option value="">Tüm Kategoriler</option>
             <!-- Kategoriler dinamik olarak eklenecek -->
+          </select>
+
+          <!-- Fiyata göre sıralama -->
+          <select id="sort-select" class="sort-select" title="Sırala">
+            <option value="default">Sıralama: Varsayılan</option>
+            <option value="price-asc">Fiyat: Artan</option>
+            <option value="price-desc">Fiyat: Azalan</option>
+            <option value="rating-desc">Puan: Yüksekten Düşüğe</option>
+            <option value="rating-asc">Puan: Düşükten Yükseğe</option>
           </select>
         </div>
 
