@@ -165,11 +165,20 @@ function updateAccountMenu() {
     logoutBtn.dataset.bound = "1";
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      localStorage.removeItem("tiksepet_token");
-      localStorage.removeItem("tiksepet_user");
-      localStorage.removeItem("token"); // olası eski anahtar
-      updateAccountMenu();
-      location.href = "index.html";
+      if (confirm("Çıkış yapmak istediğinize emin misiniz?")) {
+        // Onay verdiyse tokenları temizle
+        localStorage.removeItem("tiksepet_token");
+        localStorage.removeItem("tiksepet_user");
+        localStorage.removeItem("token"); // olası eski anahtar
+
+        // Eğer logout() fonksiyonun varsa çalıştır
+        if (typeof logout === "function") {
+          logout();
+        }
+
+        updateAccountMenu();
+        location.href = "index.html";
+      }
     });
   }
 }
