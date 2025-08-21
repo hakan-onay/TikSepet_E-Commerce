@@ -1,4 +1,3 @@
-// js/admin.js (module)
 import { api } from "./api.js";
 import { requireAdmin, me, logout } from "./auth.js";
 
@@ -21,7 +20,6 @@ async function initAdminGuard() {
   try {
     await requireAdmin();
 
-    // GÖSTER / GİZLE işlemleri
     if (content) {
       content.classList.remove("hidden");
       content.style.display = "grid";
@@ -31,7 +29,6 @@ async function initAdminGuard() {
       guard.style.display = "none";
     }
 
-    // Navbar ismi ve logout
     const u = await me().catch(() => null);
     const navName = $("#nav-username");
     if (u && navName) navName.textContent = `Admin: ${u.name || u.email}`;
@@ -68,7 +65,6 @@ function renderProducts(rows = []) {
   }
   $("#products-empty").classList.add("hidden");
 
-  // Kategori filtresi (benzersiz)
   const categories = [...new Set(rows.map((r) => r.category).filter(Boolean))];
   const sel = $("#category-filter");
   if (sel && sel.options.length <= 1) {
@@ -91,9 +87,6 @@ function renderProducts(rows = []) {
       <td class="right">₺${fmt(p.price)}</td>
       <td>${p.stock ?? 0}</td>
       <td>${p.rating ?? 0}</td>
-      <td>${
-        p.image_path ? `<a href="${p.image_path}" target="_blank">Gör</a>` : "-"
-      }</td>
       <td class="right">
         <button class="btn ghost btn-edit" data-id="${p.id}">Düzenle</button>
         <button class="btn warn btn-del" data-id="${p.id}">Sil</button>
@@ -120,10 +113,19 @@ async function loadProducts() {
 
 // ---- Modal ----
 function openModal() {
-  $("#modal-backdrop").style.display = "flex";
+  const backdrop = $("#modal-backdrop");
+  if (!backdrop) return;
+  backdrop.classList.remove("hidden"); // kritik
+  backdrop.style.display = "flex"; // görünür hale getir
+  // UX: ilk inputa odaklan
+  setTimeout(() => $("#p-title")?.focus(), 0);
 }
+
 function closeModal() {
-  $("#modal-backdrop").style.display = "none";
+  const backdrop = $("#modal-backdrop");
+  if (!backdrop) return;
+  backdrop.style.display = ""; // inline stili temizle
+  backdrop.classList.add("hidden"); // tekrar gizle
   editingId = null;
   clearForm();
 }
@@ -244,7 +246,15 @@ function renderOrders(rows = []) {
     tr.innerHTML = `
       <td>${o.id}</td>
       <td>${o.user_email || o.user_name || "-"}</td>
-      <td>₺${fmt(o.total_amount)}</td>
+      <td>₺${fmt(o.total_amount ?? o.total)}
+          <div class="muted">${
+            o.payment_method === "card"
+              ? "Kart"
+              : o.payment_method === "cod"
+              ? "Kapıda Ödeme"
+              : ""
+          }</div>
+      </td>
       <td><div class="muted">${addr || "-"}</div><div class="muted">${
       o.phone || ""
     }</div></td>
@@ -269,18 +279,23 @@ function renderOrders(rows = []) {
     tb.appendChild(tr);
   }
 
+  // Sipariş durumu güncelleme butonları - DÜZELTİLMİŞ KISIM
   $$(".btn-update-status").forEach((b) =>
     b.addEventListener("click", async () => {
       const id = b.dataset.id;
-      const sel = $(`select.order-status[data-id="${id}"]`);
+      const sel = document.querySelector(
+        `select.order-status[data-id="${id}"]`
+      );
       const status = sel.value;
+
       try {
         await api(`/admin/orders/${id}/status`, {
-          method: "POST", // backend PUT/PATCH destekliyorsa değiştir
+          method: "PUT", // POST yerine PUT kullan
           auth: true,
           body: { status },
         });
         await loadOrders();
+        alert("Sipariş durumu güncellendi!");
       } catch (e) {
         alert("Durum güncellenemedi: " + (e.message || e));
       }

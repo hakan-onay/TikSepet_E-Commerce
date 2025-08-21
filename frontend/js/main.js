@@ -1,4 +1,33 @@
-// js/main.js (global, module değil)
+// js/main.js == Backend API helper (main.js, module değil) ==
+const API_BASE = "http://localhost:5000/api"; // api.js ile aynı olmalı
+
+async function apiMain(
+  path,
+  { method = "GET", body, auth = false, headers = {} } = {}
+) {
+  const h = { ...headers };
+  let finalBody = body;
+  if (body && !(body instanceof FormData)) {
+    h["Content-Type"] = "application/json";
+    finalBody = JSON.stringify(body);
+  }
+  if (auth) {
+    const t = localStorage.getItem("tiksepet_token");
+    if (t) h.Authorization = `Bearer ${t}`;
+  }
+  const res = await fetch(API_BASE + path, {
+    method,
+    headers: h,
+    body: finalBody,
+  });
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {}
+  if (!res.ok) throw new Error(data?.message || text || `HTTP ${res.status}`);
+  return data;
+}
 
 // ==============================
 // Header ve footer logolarını tema ile uyumlu tut
@@ -54,45 +83,55 @@ function toggleMenu() {
 }
 
 // ==============================
-// Sepet rozeti
+// Sepet rozeti (tamamen backend)
 // ==============================
-function updateCartCount() {
-  const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+async function updateCartCount() {
   const el = document.getElementById("cart-count");
   if (!el) return;
-  const totalQty = cart.reduce(
-    (s, it) => s + (parseInt(it.quantity || 0, 10) || 0),
-    0
-  );
-  el.textContent = String(totalQty);
+
+  const token = localStorage.getItem("tiksepet_token");
+  if (!token) {
+    el.textContent = "0";
+    return;
+  }
+
+  try {
+    const rows = await apiMain("/cart", { auth: true }); // [{product_id, quantity, ...}]
+    const totalQty = (rows || []).reduce(
+      (s, it) => s + (parseInt(it.quantity || 0, 10) || 0),
+      0
+    );
+    el.textContent = String(totalQty);
+  } catch {
+    el.textContent = "0";
+  }
 }
 
-// cart değişimlerini diğer sekmelere de ilet
-(function patchCartEvents() {
+// Sadece auth değişimleri için çapraz-sekme bildirimleri
+(function patchAuthEvents() {
   const _setItem = localStorage.setItem;
   const _removeItem = localStorage.removeItem;
 
   localStorage.setItem = function (key, value) {
     const oldVal = localStorage.getItem(key);
     _setItem.apply(this, arguments);
-    if (key === "cart" && oldVal !== value)
-      window.dispatchEvent(new Event("cart-changed"));
     if (
       (key === "tiksepet_token" || key === "tiksepet_user") &&
       oldVal !== value
-    )
+    ) {
       window.dispatchEvent(new Event("auth-changed"));
+    }
   };
   localStorage.removeItem = function (key) {
     _removeItem.apply(this, arguments);
-    if (key === "cart") window.dispatchEvent(new Event("cart-changed"));
-    if (key === "tiksepet_token" || key === "tiksepet_user")
+    if (key === "tiksepet_token" || key === "tiksepet_user") {
       window.dispatchEvent(new Event("auth-changed"));
+    }
   };
   window.addEventListener("storage", (e) => {
-    if (e.key === "cart") window.dispatchEvent(new Event("cart-changed"));
-    if (e.key === "tiksepet_token" || e.key === "tiksepet_user")
+    if (e.key === "tiksepet_token" || e.key === "tiksepet_user") {
       window.dispatchEvent(new Event("auth-changed"));
+    }
   });
 })();
 
@@ -173,6 +212,7 @@ window.addEventListener("load", () => {
 // Canlı dinleyiciler
 window.addEventListener("cart-changed", updateCartCount);
 window.addEventListener("auth-changed", updateAccountMenu);
+window.addEventListener("auth-changed", updateCartCount);
 
 // Eski inline çağrımlar bozulmasın diye:
 window.toggleTheme = toggleTheme;

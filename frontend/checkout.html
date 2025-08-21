@@ -61,7 +61,6 @@
               <button class="dropbtn">👤 Hesabım ▾</button>
               <div class="dropdown-content">
                 <a href="profile.html">Profil</a>
-                <a href="orders.html">Siparişlerim</a>
                 <a href="#" id="logoutBtn">Çıkış Yap</a>
               </div>
             </div>
@@ -81,75 +80,121 @@
       </nav>
     </header>
 
-    <!-- Ödeme Formu -->
+    <!-- Sayfa İçeriği -->
     <main class="checkout-container">
       <h1>Ödeme Sayfası</h1>
-      <form id="checkout-form" novalidate>
-        <h2>Teslimat Bilgileri</h2>
 
-        <label>Ad *</label>
-        <input type="text" id="first-name" required />
-        <label>Soyad *</label>
-        <input type="text" id="last-name" required />
-        <label>Telefon *</label>
-        <input
-          type="tel"
-          id="phone"
-          required
-          placeholder="0534 896 84 32"
-          inputmode="numeric"
-        />
-        <label>E-posta *</label>
-        <input type="email" id="email" required />
-        <label>İl *</label>
-        <input type="text" id="city" required />
-        <label>İlçe *</label>
-        <input type="text" id="district" required />
-        <label>Açık Adres *</label>
-        <textarea id="address" rows="3" required></textarea>
+      <div class="checkout-grid">
+        <!-- SOL: Form -->
+        <form id="checkout-form" class="checkout-form" novalidate>
+          <h2>Teslimat Bilgileri</h2>
 
-        <label for="payment-method">Ödeme Yöntemi *</label>
-        <select id="payment-method" required>
-          <option value="">Seçiniz</option>
-          <option value="card">Kart ile Ödeme</option>
-          <option value="cash">Kapıda Ödeme</option>
-        </select>
+          <label for="first-name">Ad *</label>
+          <input type="text" id="first-name" name="first-name" required />
 
-        <div id="card-info" style="display: none; margin-top: 15px">
-          <h3>Kart Bilgileri</h3>
-          <label>Kart Numarası *</label>
+          <label for="last-name">Soyad *</label>
+          <input type="text" id="last-name" name="last-name" required />
+
+          <label for="phone">Telefon *</label>
           <input
-            type="text"
-            id="card-number"
-            maxlength="19"
-            placeholder="XXXX XXXX XXXX XXXX"
+            type="tel"
+            id="phone"
+            name="phone"
+            required
+            placeholder="0534 896 84 32"
             inputmode="numeric"
           />
-          <label>Son Kullanma Tarihi *</label>
-          <input
-            type="text"
-            id="expiry"
-            placeholder="AA/YY"
-            inputmode="numeric"
-          />
-          <label>CVV *</label>
-          <input type="text" id="cvv" maxlength="4" inputmode="numeric" />
-        </div>
 
-        <button type="submit" class="complete-order-btn">
-          Siparişi Tamamla
-        </button>
-      </form>
-    </main>
+          <label for="email">E-posta *</label>
+          <input type="email" id="email" name="email" required />
 
-    <!-- Sipariş Özeti -->
-    <section id="order-summary" class="order-summary" aria-live="polite">
-      <h2>Sipariş Özeti</h2>
-      <div id="summary-list"></div>
-      <div class="summary-total">
-        <span>Toplam:</span> <strong id="summary-total">₺0,00</strong>
+          <div class="grid-2">
+            <div>
+              <label for="city">İl *</label>
+              <input type="text" id="city" name="city" required />
+            </div>
+            <div>
+              <label for="district">İlçe *</label>
+              <input type="text" id="district" name="district" required />
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div>
+              <label for="postal-code">Posta Kodu</label>
+              <input
+                type="text"
+                id="postal-code"
+                name="postal-code"
+                inputmode="numeric"
+              />
+            </div>
+            <div></div>
+          </div>
+
+          <label for="address">Açık Adres *</label>
+          <textarea id="address" name="address" rows="3" required></textarea>
+
+          <h2>Ödeme</h2>
+          <label for="payment-method">Ödeme Yöntemi *</label>
+          <select id="payment-method" name="payment-method" required>
+            <option value="card" selected>Kredi/Banka Kartı</option>
+            <option value="cod">Kapıda Ödeme</option>
+          </select>
+
+          <div id="card-info" style="display: none; margin-top: 15px">
+            <h3>Kart Bilgileri</h3>
+
+            <label for="card-number">Kart Numarası *</label>
+            <input
+              type="text"
+              id="card-number"
+              name="card-number"
+              maxlength="19"
+              placeholder="XXXX XXXX XXXX XXXX"
+              inputmode="numeric"
+            />
+
+            <div class="grid-2">
+              <div>
+                <label for="expiry">Son Kullanma Tarihi *</label>
+                <input
+                  type="text"
+                  id="expiry"
+                  name="expiry"
+                  placeholder="AA/YY"
+                  inputmode="numeric"
+                />
+              </div>
+              <div>
+                <label for="cvv">CVV *</label>
+                <input
+                  type="text"
+                  id="cvv"
+                  name="cvv"
+                  maxlength="4"
+                  inputmode="numeric"
+                />
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="complete-order-btn">
+            Siparişi Tamamla
+          </button>
+        </form>
+
+        <!-- SAĞ: Sipariş Özeti -->
+        <aside class="order-summary">
+          <h2>Sipariş Özeti</h2>
+          <div id="summary-list" class="summary-list"></div>
+          <div class="summary-total-row">
+            <span>Toplam</span>
+            <strong id="summary-total">₺0,00</strong>
+          </div>
+        </aside>
       </div>
-    </section>
+    </main>
 
     <!-- Footer -->
     <footer>
@@ -166,6 +211,7 @@
 
     <!-- Script sırası: global -> sayfa -->
     <script src="js/main.js"></script>
-    <script src="js/checkout.js"></script>
+    <!-- checkout.js, ES module; api.js içinden import yapıyor -->
+    <script type="module" src="js/checkout.js"></script>
   </body>
 </html>

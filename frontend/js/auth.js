@@ -24,11 +24,22 @@ export function getToken() {
 export function logout() {
   localStorage.removeItem(LS_USER);
   localStorage.removeItem(LS_TOKEN);
-  location.href = "login.html";
+  location.href = "index.html";
 }
 
 export async function me() {
-  return api("/auth/me", { auth: true });
+  try {
+    const response = await api("/auth/me", { auth: true });
+    console.log("me() response:", response);
+    return response;
+  } catch (error) {
+    console.error("Kullanıcı bilgileri alınamadı:", error);
+    // Token geçersizse çıkış yap
+    if (error.message.includes("401") || error.message.includes("Token")) {
+      logout();
+    }
+    throw error;
+  }
 }
 
 /** Yalnızca admin erişimi */

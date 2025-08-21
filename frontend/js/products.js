@@ -1,4 +1,3 @@
-// js/products.js (ES Module) — Dinamik ürün listesi + arama/kategori/sıralama + sepete ekle
 "use strict";
 import { api } from "./api.js";
 
@@ -11,22 +10,6 @@ const fmtTRY = (n) =>
     currency: "TRY",
   });
 
-function getCart() {
-  try {
-    return JSON.parse(localStorage.getItem("cart") || "[]");
-  } catch {
-    return [];
-  }
-}
-function setCart(arr) {
-  localStorage.setItem("cart", JSON.stringify(arr));
-  // Hem window hem document’a yayınla (projede ikisi de dinleniyor olabilir)
-  const ev = new Event("cart-changed");
-  window.dispatchEvent(ev);
-  document.dispatchEvent(
-    new CustomEvent("cart-changed", { detail: { length: arr.length } })
-  );
-}
 function ensureToastContainer() {
   let c = $("#toast-container");
   if (!c) {
@@ -60,7 +43,7 @@ function userLoggedIn() {
 const gridEl = $("#product-grid") || $(".product-grid");
 const searchEl = $(".search-input");
 const catEl = $(".category-filter");
-const sortEl = $(".sort-select"); // varsa kullanılır
+const sortEl = $(".sort-select");
 const loader = $("#loader");
 
 /* ========== URL params -> state ========== */
@@ -68,7 +51,7 @@ const urlParams = new URLSearchParams(location.search);
 let page = Number(urlParams.get("page") || 1) || 1;
 let limit = 12;
 let total = 0;
-let currentItems = []; // son çekilen sayfa
+let currentItems = [];
 let currentCategories = new Set();
 
 /* ========== API ========== */
@@ -84,6 +67,30 @@ async function fetchProducts() {
   qs.set("limit", String(limit));
 
   return api(`/public/products?${qs.toString()}`); // { items, page, limit, total }
+}
+
+// Backend sepet: toplam hesaplamak için sepeti çek
+async function fetchCartAndSum() {
+  try {
+    const rows = await api("/cart", { auth: true });
+    const sum = (rows || []).reduce(
+      (acc, it) =>
+        acc + (Number(it.price) || 0) * (parseInt(it.quantity || 1, 10) || 1),
+      0
+    );
+    return { rows, sum };
+  } catch {
+    return { rows: [], sum: 0 };
+  }
+}
+
+// Sepete ekle (backend)
+async function addToCartAPI(productId, quantity = 1) {
+  return api("/cart", {
+    method: "POST",
+    auth: true,
+    body: { product_id: Number(productId), quantity: Number(quantity) },
+  });
 }
 
 /* ========== Render helpers ========== */
@@ -131,16 +138,14 @@ function renderGrid(items = []) {
     return;
   }
   gridEl.innerHTML = items.map(productCard).join("");
-  wireAddToCart(); // butonları bağla
-  wireRating(); // yıldız tıklamayı bağla
+  wireAddToCart();
+  wireRating();
 }
 
 function renderCategories(items = []) {
   if (!catEl) return;
-  // İlk option sabit kalsın (Tüm Kategoriler)
   if (catEl.dataset._filled === "1") return;
   currentCategories = new Set(items.map((x) => x.category).filter(Boolean));
-  // Eğer HTML’de manuel seçenekler varsa, eklemeyi atlayabiliriz. Otomatik dolduralım:
   if (catEl && catEl.options.length <= 1) {
     [...currentCategories]
       .sort((a, b) => trNormalize(a).localeCompare(trNormalize(b), "tr"))
@@ -215,37 +220,31 @@ function wireRating() {
 
 function wireAddToCart() {
   $$(".add-to-cart").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       if (!userLoggedIn()) {
         const ret = encodeURIComponent(location.href);
         location.href = `login.html?return=${ret}`;
         return;
       }
-      const id = String(btn.dataset.id || "");
+      const pid = String(btn.dataset.id || "");
       const name = btn.dataset.name || "Ürün";
-      const price = Number(btn.dataset.price || "0");
-      const image =
-        btn.dataset.image || "assets/images/products/placeholder.png";
 
-      const cart = getCart();
-      const i = cart.findIndex((x) => String(x.id) === id);
-      if (i !== -1)
-        cart[i].quantity = (parseInt(cart[i].quantity || 0, 10) || 0) + 1;
-      else cart.push({ id, name, price, image, quantity: 1 });
+      try {
+        await addToCartAPI(pid, 1);
 
-      setCart(cart);
-      const toplam = cart.reduce(
-        (s, it) =>
-          s + (Number(it.price) || 0) * (parseInt(it.quantity || 1, 10) || 1),
-        0
-      );
-      showToast(`${name} sepete eklendi. Toplam: ${fmtTRY(toplam)}`);
+        const { sum } = await fetchCartAndSum();
+
+        window.dispatchEvent(new Event("cart-changed"));
+
+        showToast(`${name} sepete eklendi. Toplam: ${fmtTRY(sum)}`);
+      } catch (e) {
+        alert(e?.message || "Sepete eklenemedi");
+      }
     });
   });
 }
 
 function applyClientFilters() {
-  // Backend zaten q/category ile filtreliyor; bu fonksiyon sadece mevcut listede anlık filtre/arama yapmak istersen işe yarar.
   if (!searchEl && !catEl) return;
   const q = trNormalize(searchEl?.value || "");
   const cat = trNormalize(catEl?.value || "all");
@@ -257,7 +256,6 @@ function applyClientFilters() {
     const okCat = cat === "all" || c === cat;
     card.style.display = okSearch && okCat ? "" : "none";
   }
-  // Sıralama (opsiyonel)
   if (sortEl) {
     const mode = sortEl.value; // default | price-asc | price-desc
     if (mode !== "default") {
@@ -283,7 +281,7 @@ function applyClientFilters() {
 async function load() {
   if (loader) loader.style.display = "block";
   try {
-    const data = await fetchProducts(); // { items, total, page, limit }
+    const data = await fetchProducts();
     const items = Array.isArray(data?.items)
       ? data.items
       : Array.isArray(data)
@@ -295,7 +293,7 @@ async function load() {
     renderGrid(items);
     renderCategories(items);
     renderPager();
-    applyClientFilters(); // anlık arama/sort
+    applyClientFilters();
   } catch (e) {
     console.error(e);
     if (gridEl)

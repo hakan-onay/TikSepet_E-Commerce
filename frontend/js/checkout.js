@@ -9,54 +9,49 @@ const fmtTRY = (n) =>
     currency: "TRY",
   });
 
-const getCart = () => {
-  try {
-    return JSON.parse(localStorage.getItem("cart") || "[]");
-  } catch {
-    return [];
-  }
-};
-
-function buildOrderItemsFromCart(cart) {
-  return cart.map((it) => ({
-    product_id: Number(it.id),
-    quantity: parseInt(it.quantity || 1, 10),
-  }));
-}
-
-/* ===== Guard: sepet + login ===== */
 function isLoggedIn() {
   return !!localStorage.getItem("tiksepet_token");
 }
 
-function guardCheckout() {
-  const cart = getCart();
-  if (!cart.length) {
-    alert("Sepetiniz boş. Lütfen ürün ekleyin.");
-    location.href = "products.html";
-    return false;
+async function fetchCartForCheckout() {
+  try {
+    const rows = await api("/cart", { auth: true });
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
   }
+}
+
+/* ===== Guards ===== */
+async function guardCheckout() {
   if (!isLoggedIn()) {
     const ret = encodeURIComponent("checkout.html");
     location.href = `login.html?return=${ret}`;
     return false;
   }
+
+  const rows = await fetchCartForCheckout();
+  if (!rows.length) {
+    alert("Sepetiniz boş. Lütfen ürün ekleyin.");
+    location.href = "products.html";
+    return false;
+  }
   return true;
 }
 
-/* ===== Sipariş Özeti ===== */
-function renderOrderSummary() {
+/* ===== Summary Renderer ===== */
+async function renderOrderSummary() {
   const listEl = document.getElementById("summary-list");
   const totalEl = document.getElementById("summary-total");
   if (!listEl || !totalEl) return;
 
-  const cart = getCart();
+  const cartRows = await fetchCartForCheckout();
   listEl.innerHTML = "";
   let total = 0;
 
-  for (const item of cart) {
-    const name = item.name || item.title || "Ürün";
-    const qty = parseInt(item.quantity || 1, 10);
+  for (const item of cartRows) {
+    const name = item.title || item.name || "Ürün";
+    const qty = Math.max(1, parseInt(item.quantity || 1, 10));
     const price = Number(item.price) || 0;
     const line = price * qty;
     total += line;
@@ -64,7 +59,7 @@ function renderOrderSummary() {
     const row = document.createElement("div");
     row.className = "summary-item";
     row.innerHTML = `
-      <div>${name}</div>
+      <div class="summary-name">${name}</div>
       <div class="summary-qty">x${qty}</div>
       <div class="summary-line">${fmtTRY(line)}</div>
     `;
@@ -74,44 +69,40 @@ function renderOrderSummary() {
   totalEl.textContent = fmtTRY(total);
 }
 
-/* ===== Ödeme yöntemi alanları ===== */
+/* ===== Payment Method Toggle ===== */
 function wirePaymentMethod() {
   const sel = document.getElementById("payment-method");
   const cardBox = document.getElementById("card-info");
   if (!sel || !cardBox) return;
 
   const toggle = () => {
-    const useCard = sel.value === "card";
+    const useCard = (sel.value || "").toLowerCase() === "card";
     cardBox.style.display = useCard ? "block" : "none";
+
+    // Kapıda ödeme seçilirse kart alanlarını pasifleştir (zorunluluk çakışmasın)
+    ["card-number", "expiry", "cvv"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (useCard) {
+        el.removeAttribute("disabled");
+      } else {
+        el.setAttribute("disabled", "disabled");
+      }
+    });
   };
+
   sel.addEventListener("change", toggle);
-  toggle(); // initial
+  sel.addEventListener("input", toggle);
+  setTimeout(toggle, 0); // ilk yüklemede doğru görünüm
 }
 
-/* ===== Maske/validasyon ===== */
-function luhnCheck(num) {
-  const s = (num || "").replace(/\s+/g, "");
-  let sum = 0,
-    alt = false;
-  for (let i = s.length - 1; i >= 0; i--) {
-    let n = parseInt(s[i], 10);
-    if (alt) {
-      n *= 2;
-      if (n > 9) n -= 9;
-    }
-    sum += n;
-    alt = !alt;
-  }
-  return sum % 10 === 0;
-}
-
+/* ===== Input Masks ===== */
 function wireMasks() {
   const phone = document.getElementById("phone");
   const cardNumber = document.getElementById("card-number");
   const expiry = document.getElementById("expiry");
   const cvv = document.getElementById("cvv");
 
-  // Telefon: 4-3-2-2 (0534 896 84 32)
   if (phone) {
     phone.addEventListener("input", () => {
       const d = phone.value.replace(/\D/g, "").slice(0, 11);
@@ -131,6 +122,7 @@ function wireMasks() {
       cardNumber.value = v.replace(/(.{4})/g, "$1 ").trim();
     });
   }
+
   if (expiry) {
     expiry.addEventListener("input", () => {
       let v = expiry.value.replace(/\D/g, "").slice(0, 4);
@@ -138,6 +130,7 @@ function wireMasks() {
       expiry.value = v;
     });
   }
+
   if (cvv) {
     cvv.addEventListener("input", () => {
       cvv.value = cvv.value.replace(/\D/g, "").slice(0, 4);
@@ -145,119 +138,141 @@ function wireMasks() {
   }
 }
 
+/* ===== Card Validation ===== */
 function validateCardFields() {
-  const numRaw = document
-    .getElementById("card-number")
-    .value.trim()
-    .replace(/\s/g, "");
-  const expiry = document.getElementById("expiry").value.trim();
-  const cvv = document.getElementById("cvv").value.trim();
+  const numRaw =
+    document.getElementById("card-number")?.value?.replace(/\s/g, "") || "";
+  const expiry = document.getElementById("expiry")?.value || "";
+  const cvv = document.getElementById("cvv")?.value || "";
 
-  if (!numRaw || numRaw.length < 13 || !luhnCheck(numRaw)) {
-    alert("Kart numarası geçersiz görünüyor. Lütfen kontrol edin.");
+  if (!numRaw || numRaw.length < 13) {
+    alert("Kart numarası geçersiz.");
     return false;
   }
-  const [mm, yy] = (expiry || "").split("/");
+
+  const [mm, yy] = expiry.split("/");
   const m = parseInt(mm, 10);
-  const y = parseInt("20" + (yy || ""), 10);
+  const y = parseInt("20" + yy, 10);
+
   if (!(m >= 1 && m <= 12) || !y) {
-    alert("Son kullanma tarihi hatalı. (AA/YY)");
+    alert("Son kullanma tarihi hatalı. (AA/YY formatında girin)");
     return false;
   }
+
   if (!(cvv.length === 3 || cvv.length === 4)) {
     alert("CVV 3 veya 4 haneli olmalı.");
     return false;
   }
+
   const now = new Date();
   const exp = new Date(y, m - 1, 1);
   if (exp < new Date(now.getFullYear(), now.getMonth(), 1)) {
-    alert("Kartın son kullanma tarihi geçmiş görünüyor.");
+    alert("Kartın son kullanma tarihi geçmiş.");
     return false;
   }
+
   return true;
 }
 
 /* ===== Submit ===== */
-async function submitOrder(payload) {
-  // Burada api.js backend’e token’lı fetch atıyor
-  return api("/orders", {
-    method: "POST",
-    body: payload,
-    auth: true,
-  });
-}
-
 function wireSubmit() {
   const form = document.getElementById("checkout-form");
   if (!form) return;
 
+  let submitting = false;
+  const submitBtn = form.querySelector('button[type="submit"]');
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
-    const firstName = document.getElementById("first-name").value.trim();
-    const lastName = document.getElementById("last-name").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const city = document.getElementById("city").value.trim();
-    const district = document.getElementById("district").value.trim();
-    const address = document.getElementById("address").value.trim();
-    const payment = document.getElementById("payment-method").value;
-
-    if (
-      !firstName ||
-      !lastName ||
-      !phone ||
-      !email ||
-      !city ||
-      !district ||
-      !address ||
-      !payment
-    ) {
-      alert("Lütfen tüm zorunlu alanları doldurun.");
-      return;
-    }
-    if (payment === "card" && !validateCardFields()) return;
-
-    const cart = getCart();
-    if (!cart.length) {
-      alert("Sepet boş.");
-      return;
-    }
-
-    const payload = {
-      name: `${firstName} ${lastName}`,
-      email,
-      phone,
-      city,
-      district,
-      address,
-      paymentMethod: payment,
-      items: buildOrderItemsFromCart(cart),
-    };
+    submitting = true;
+    submitBtn?.setAttribute("disabled", "disabled");
+    if (submitBtn) submitBtn.textContent = "İşleniyor...";
 
     try {
-      const created = await submitOrder(payload); // backend {id, total, status} döner
+      const fd = new FormData(form);
+      const getVal = (n, id) =>
+        fd.get(n) ?? document.getElementById(id)?.value ?? "";
+
+      const payment_method = (
+        getVal("payment-method", "payment-method") || ""
+      ).toLowerCase();
+
+      const orderData = {
+        address: getVal("address", "address"),
+        district: getVal("district", "district"),
+        city: getVal("city", "city"),
+        postal_code: getVal("postal-code", "postal-code") || null,
+        phone: getVal("phone", "phone"),
+        payment_method,
+      };
+
+      // Zorunlu alanlar
+      if (
+        !orderData.address ||
+        !orderData.district ||
+        !orderData.city ||
+        !orderData.phone
+      ) {
+        alert("Lütfen tüm zorunlu alanları doldurun.");
+        submitting = false;
+        submitBtn?.removeAttribute("disabled");
+        if (submitBtn) submitBtn.textContent = "Siparişi Tamamla";
+        return;
+      }
+
+      if (payment_method === "card") {
+        if (!validateCardFields()) {
+          submitting = false;
+          submitBtn?.removeAttribute("disabled");
+          if (submitBtn) submitBtn.textContent = "Siparişi Tamamla";
+          return;
+        }
+      } else {
+        // Kapıda ödeme ise kart alanlarını temizle
+        ["card-number", "expiry", "cvv"].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+      }
+
+      // Sipariş oluştur
+      const result = await api("/orders", {
+        method: "POST",
+        body: orderData,
+        auth: true,
+      });
+
+      // Özet için localStorage
       localStorage.setItem(
         "latestOrder",
         JSON.stringify({
-          id: created.id,
-          total: created.total,
-          paymentMethod: payment,
+          id: result?.id,
+          total: result?.total,
+          paymentMethod: payment_method,
           date: new Date().toISOString(),
         })
       );
-      localStorage.removeItem("cart");
+
       location.href = "order-confirmation.html";
-    } catch (err) {
-      alert("Sipariş oluşturulamadı: " + (err?.message || err));
+    } catch (error) {
+      console.error("Sipariş hatası:", error);
+      alert("Sipariş oluşturulamadı: " + (error?.message || "Bilinmeyen hata"));
+    } finally {
+      submitting = false;
+      submitBtn?.removeAttribute("disabled");
+      if (submitBtn) submitBtn.textContent = "Siparişi Tamamla";
     }
   });
 }
 
-/* ===== INIT ===== */
-document.addEventListener("DOMContentLoaded", () => {
-  if (!guardCheckout()) return;
-  renderOrderSummary();
+/* ===== Init ===== */
+document.addEventListener("DOMContentLoaded", async () => {
+  const ok = await guardCheckout();
+  if (!ok) return;
+
+  await renderOrderSummary();
   wirePaymentMethod();
   wireMasks();
   wireSubmit();
