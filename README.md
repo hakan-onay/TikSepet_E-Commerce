@@ -88,7 +88,7 @@ USE tiksepet;
 ```
 
 ```bash
-mysql -u root -p tiksepet < database.sql
+mysql -u root -p tiksepet < db.sql
 ```
 
 ---
