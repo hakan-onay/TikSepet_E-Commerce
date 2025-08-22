@@ -263,7 +263,8 @@ mysql -u root -p tiksepet < backup.sql
 
 ## 📝 Lisans
 
-Bu proje **MIT** lisansı ile lisanslanmıştır.
+Bu proje **Apache License 2.0** altında lisanslanmıştır.  
+Daha fazla bilgi için [LICENSE](./LICENSE) dosyasına bakabilirsiniz.
 
 ---
 
