@@ -1468,51 +1468,63 @@ td.right {
 }
 
 /* =========================
-   Modal
+   Modal (gelişmiş versiyon)
    ========================= */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
   display: none;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
   z-index: 1000;
 }
-
-.modal-backdrop.active {
+.modal-backdrop.show {
   display: flex;
 }
-
 .modal-content {
-  background: var(--card-bg);
-  color: var(--text-color);
-  padding: 20px 24px;
-  border-radius: 12px;
-  width: 400px;
-  max-width: 90%;
-  box-shadow: var(--shadow-lg);
+  width: min(1100px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+  background: var(--card-bg, #fff);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg, 0 10px 26px rgba(0, 0, 0, 0.15));
   animation: fadeInScale 0.3s ease;
 }
-
-.modal-header {
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 15px;
-  text-align: center;
+.modal-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color, #ddd);
+  position: sticky;
+  top: 0;
+  background: inherit;
+  z-index: 1;
+}
+.modal-body {
+  padding: 16px 20px;
+}
+.right {
+  text-align: right;
+}
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-light, #eef);
+  font-size: 12px;
 }
 
+/* Modal form (ürün ekleme/düzenleme) */
 .modal-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-
 .modal-form label {
   font-weight: 600;
   font-size: 0.85rem;
 }
-
 .modal-form input,
 .modal-form textarea,
 .modal-form select {
@@ -1524,7 +1536,6 @@ td.right {
   font-size: 0.9rem;
   transition: border 0.2s ease, box-shadow 0.2s ease;
 }
-
 .modal-form input:focus,
 .modal-form textarea:focus,
 .modal-form select:focus {
@@ -1532,7 +1543,6 @@ td.right {
   box-shadow: 0 0 0 2px rgba(0, 207, 193, 0.12);
   outline: none;
 }
-
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1540,37 +1550,61 @@ td.right {
   margin-top: 15px;
 }
 
-.modal-actions .btn-cancel {
-  background: var(--accent-light);
-  color: var(--text-color);
+/* Admin İçeriği */
+#admin-content {
+  text-align: center;
+  padding: 40px 20px;
   border: none;
-  border-radius: 6px;
-  padding: 8px 14px;
-  cursor: pointer;
+  border-radius: 16px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+#admin-content:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+#admin-content .toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+#admin-content .btn {
+  font-size: 1.05rem;
   font-weight: 600;
-  transition: background 0.25s ease;
+  padding: 14px 24px;
+  border-radius: 10px;
+  transition: background 0.3s ease, transform 0.2s ease;
 }
 
-.modal-actions .btn-cancel:hover {
-  background: #ddd;
-}
-
-.modal-actions .btn-save {
+/* Birincil buton (ürün yönetimi) */
+#admin-content .btn.primary {
   background: var(--primary);
   color: #fff;
   border: none;
-  border-radius: 6px;
-  padding: 8px 14px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.25s ease, transform 0.15s ease;
 }
-
-.modal-actions .btn-save:hover {
+#admin-content .btn.primary:hover {
   background: var(--primary-hover);
   transform: translateY(-2px);
 }
 
+/* İkincil buton (sipariş yönetimi) */
+#admin-content .btn:not(.primary) {
+  background: var(--secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+#admin-content .btn:not(.primary):hover {
+  background: var(--accent-light);
+  transform: translateY(-2px);
+}
+
+/* Animasyon */
 @keyframes fadeInScale {
   from {
     opacity: 0;

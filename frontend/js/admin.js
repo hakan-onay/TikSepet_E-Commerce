@@ -1,7 +1,9 @@
+// admin.js
 import { api } from "./api.js";
 import { requireAdmin, me, logout } from "./auth.js";
 
 let editingId = null;
+let _ordersCache = []; // istemci tarafı filtre için
 
 // Kısayollar
 const $ = (s) => document.querySelector(s);
@@ -12,7 +14,7 @@ const fmt = (n) =>
     maximumFractionDigits: 2,
   });
 
-// ---- Admin Guard & Navbar ----
+/* ================== GUARD ================== */
 async function initAdminGuard() {
   const guard = $("#admin-guard");
   const content = $("#admin-content");
@@ -22,7 +24,7 @@ async function initAdminGuard() {
 
     if (content) {
       content.classList.remove("hidden");
-      content.style.display = "grid";
+      content.style.display = "block";
     }
     if (guard) {
       guard.classList.add("hidden");
@@ -44,6 +46,20 @@ async function initAdminGuard() {
     }
     throw new Error("unauthorized");
   }
+}
+
+/* ================== MODAL HELPERS ================== */
+function openModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.add("show");
+  m.setAttribute("aria-hidden", "false");
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.remove("show");
+  m.setAttribute("aria-hidden", "true");
 }
 
 /* ================== ÜRÜNLER ================== */
@@ -111,25 +127,7 @@ async function loadProducts() {
   }
 }
 
-// ---- Modal ----
-function openModal() {
-  const backdrop = $("#modal-backdrop");
-  if (!backdrop) return;
-  backdrop.classList.remove("hidden"); // kritik
-  backdrop.style.display = "flex"; // görünür hale getir
-  // UX: ilk inputa odaklan
-  setTimeout(() => $("#p-title")?.focus(), 0);
-}
-
-function closeModal() {
-  const backdrop = $("#modal-backdrop");
-  if (!backdrop) return;
-  backdrop.style.display = ""; // inline stili temizle
-  backdrop.classList.add("hidden"); // tekrar gizle
-  editingId = null;
-  clearForm();
-}
-
+// Ürün formu (ikinci modal)
 function clearForm() {
   $("#p-title").value = "";
   $("#p-category").value = "";
@@ -138,8 +136,8 @@ function clearForm() {
   $("#p-rating").value = "";
   $("#p-image").value = "";
   $("#p-desc").value = "";
+  $("#p-image-file").value = "";
 }
-
 function fillForm(p) {
   $("#p-title").value = p.title || "";
   $("#p-category").value = p.category || "";
@@ -182,7 +180,7 @@ async function saveProduct() {
     const method = editingId ? "PUT" : "POST";
     await api(path, { method, body: fd, auth: true });
     await loadProducts();
-    closeModal();
+    closeModal("product-form-modal");
   } catch (e) {
     alert("Kaydetme hatası: " + (e.message || e));
   }
@@ -196,7 +194,7 @@ async function openEdit(id) {
     editingId = id;
     $("#modal-title").textContent = `Ürün Düzenle #${id}`;
     fillForm(p);
-    openModal();
+    openModal("product-form-modal");
   } catch (e) {
     alert("Düzenleme hatası: " + (e.message || e));
   }
@@ -215,9 +213,38 @@ async function delProduct(id) {
 /* ================== SİPARİŞLER ================== */
 async function fetchOrders() {
   const status = $("#status-filter")?.value || "";
+  const q = $("#orders-search")?.value?.trim();
   const params = new URLSearchParams();
   if (status) params.set("status", status);
-  return api(`/admin/orders?${params.toString()}`, { auth: true });
+  if (q) params.set("q", q); // Backend destekliyorsa
+  const rows = await api(`/admin/orders?${params.toString()}`, { auth: true });
+  _ordersCache = Array.isArray(rows) ? rows : [];
+  // Backend q desteklemezse istemci filtresi uygula
+  if (q && !_serverLikelyFiltered(rows, q)) {
+    return _filterOrdersClient(_ordersCache, q);
+  }
+  return _ordersCache;
+}
+
+function _serverLikelyFiltered(rows, q) {
+  if (!Array.isArray(rows) || !rows.length) return true;
+  // Çok kaba bir sezgi: eğer hem eşleşen hem eşleşmeyen çokça kayıt geliyorsa backend filtrelememiş olabilir
+  const hit = rows.some((o) => _orderSearchText(o).includes(q.toLowerCase()));
+  const miss = rows.some((o) => !_orderSearchText(o).includes(q.toLowerCase()));
+  return !(hit && miss); // hit+miss birlikteyse muhtemelen filtrelenmedi
+}
+
+function _orderSearchText(o) {
+  const addr = [o.address, o.district, o.city, o.postal_code]
+    .filter(Boolean)
+    .join(", ");
+  const user = [o.user_email, o.user_name].filter(Boolean).join(" ");
+  return [`#${o.id}`, user, o.phone || "", addr].join(" ").toLowerCase();
+}
+
+function _filterOrdersClient(rows, q) {
+  const s = q.toLowerCase();
+  return rows.filter((o) => _orderSearchText(o).includes(s));
 }
 
 function renderOrders(rows = []) {
@@ -279,7 +306,6 @@ function renderOrders(rows = []) {
     tb.appendChild(tr);
   }
 
-  // Sipariş durumu güncelleme butonları - DÜZELTİLMİŞ KISIM
   $$(".btn-update-status").forEach((b) =>
     b.addEventListener("click", async () => {
       const id = b.dataset.id;
@@ -290,11 +316,12 @@ function renderOrders(rows = []) {
 
       try {
         await api(`/admin/orders/${id}/status`, {
-          method: "PUT", // POST yerine PUT kullan
+          method: "PUT",
           auth: true,
           body: { status },
         });
-        await loadOrders();
+        const fresh = await fetchOrders();
+        renderOrders(fresh);
         alert("Sipariş durumu güncellendi!");
       } catch (e) {
         alert("Durum güncellenemedi: " + (e.message || e));
@@ -305,13 +332,15 @@ function renderOrders(rows = []) {
 
 async function loadOrders() {
   try {
-    renderOrders(await fetchOrders());
+    const rows = await fetchOrders();
+    renderOrders(rows);
   } catch (e) {
     alert("Siparişleri çekerken hata: " + (e.message || e));
   }
 }
 
 /* ================== INIT ================== */
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     await initAdminGuard();
@@ -319,30 +348,61 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // Ürünler
-  $("#btn-new-product").addEventListener("click", () => {
+  // Ana sayfa üzerindeki açma butonları
+  $("#open-products-modal")?.addEventListener("click", () => {
+    openModal("products-modal");
+    // ilk girişte yükleme
+    loadProducts();
+  });
+  $("#open-orders-modal")?.addEventListener("click", () => {
+    openModal("orders-modal");
+    loadOrders();
+  });
+
+  // Modal kapatma
+  $("#btn-close-products")?.addEventListener("click", () =>
+    closeModal("products-modal")
+  );
+  $("#btn-close-orders")?.addEventListener("click", () =>
+    closeModal("orders-modal")
+  );
+
+  // backdrop tıklayınca kapat
+  ["products-modal", "orders-modal", "product-form-modal"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("click", (e) => {
+      if (e.target.id === id) closeModal(id);
+    });
+  });
+
+  /* Ürün modal içi */
+  $("#btn-new-product")?.addEventListener("click", () => {
     editingId = null;
     $("#modal-title").textContent = "Yeni Ürün";
     clearForm();
-    openModal();
+    openModal("product-form-modal");
   });
-  $("#btn-refresh-products").addEventListener("click", loadProducts);
-  $("#search-input").addEventListener("input", () => {
+  $("#btn-close-product-form")?.addEventListener("click", () =>
+    closeModal("product-form-modal")
+  );
+  $("#btn-refresh-products")?.addEventListener("click", loadProducts);
+  $("#search-input")?.addEventListener("input", () => {
     clearTimeout(window._pdebounce);
     window._pdebounce = setTimeout(loadProducts, 300);
   });
-  $("#category-filter").addEventListener("change", loadProducts);
-  $("#btn-save").addEventListener("click", saveProduct);
-  $("#btn-cancel").addEventListener("click", closeModal);
-  $("#modal-backdrop").addEventListener("click", (e) => {
-    if (e.target.id === "modal-backdrop") closeModal();
+  $("#category-filter")?.addEventListener("change", loadProducts);
+  $("#btn-save")?.addEventListener("click", saveProduct);
+  $("#btn-cancel")?.addEventListener("click", () =>
+    closeModal("product-form-modal")
+  );
+
+  /* Sipariş modal içi */
+  $("#btn-refresh-orders")?.addEventListener("click", loadOrders);
+  $("#status-filter")?.addEventListener("change", loadOrders);
+  $("#orders-search")?.addEventListener("input", () => {
+    clearTimeout(window._odebounce);
+    window._odebounce = setTimeout(async () => {
+      const rows = await fetchOrders();
+      renderOrders(rows);
+    }, 300);
   });
-
-  // Siparişler
-  $("#btn-refresh-orders").addEventListener("click", loadOrders);
-  $("#status-filter").addEventListener("change", loadOrders);
-
-  // İlk yüklemeler
-  await loadProducts();
-  await loadOrders();
 });

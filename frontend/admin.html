@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TikSepet | Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="icon" type="image/x-icon" href="assets/favicon/favicon.ico" />
     <link rel="stylesheet" href="css/style.css" />
   </head>
@@ -35,10 +41,30 @@
         <a href="index.html">Ana sayfa</a>
       </div>
 
-      <div id="admin-content" class="admin-grid hidden">
-        <!-- Ürün Yönetimi -->
-        <section class="card">
+      <div id="admin-content" class="card hidden">
+        <div class="toolbar">
+          <button id="open-products-modal" class="btn primary">
+            Ürün Yönetimini Aç
+          </button>
+          <button id="open-orders-modal" class="btn">
+            Sipariş Yönetimini Aç
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ÜRÜN MODALI -->
+    <div id="products-modal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header-bar">
           <h2>Ürün Yönetimi</h2>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <button id="btn-close-products" class="btn icon" title="Kapat">
+              ✕
+            </button>
+          </div>
+        </div>
+        <div class="modal-body">
           <div class="toolbar">
             <button id="btn-new-product" class="btn primary">Yeni Ürün</button>
             <input
@@ -68,12 +94,28 @@
             </table>
             <p id="products-empty" class="muted hidden">Hiç ürün bulunamadı.</p>
           </div>
-        </section>
+        </div>
+      </div>
+    </div>
 
-        <!-- Sipariş Yönetimi -->
-        <section class="card">
+    <!-- SİPARİŞ MODALI -->
+    <div id="orders-modal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-content">
+        <div class="modal-header-bar">
           <h2>Sipariş Yönetimi</h2>
+          <div style="display: flex; gap: 8px; align-items: center">
+            <button id="btn-close-orders" class="btn icon" title="Kapat">
+              ✕
+            </button>
+          </div>
+        </div>
+        <div class="modal-body">
           <div class="toolbar">
+            <input
+              id="orders-search"
+              type="text"
+              placeholder="Ara: #id, e‑posta, ad, telefon, adres..."
+            />
             <select id="status-filter">
               <option value="">Durum (hepsi)</option>
               <option value="pending">Bekliyor</option>
@@ -82,7 +124,6 @@
               <option value="delivered">Teslim</option>
               <option value="cancelled">İptal</option>
             </select>
-
             <button id="btn-refresh-orders" class="btn ghost">Yenile</button>
           </div>
           <div class="table-wrap">
@@ -102,48 +143,67 @@
             </table>
             <p id="orders-empty" class="muted hidden">Sipariş yok.</p>
           </div>
-        </section>
+        </div>
       </div>
-    </main>
+    </div>
 
-    <!-- Ürün Modal -->
-    <div id="modal-backdrop" class="modal-backdrop hidden">
-      <div class="modal-content">
-        <h3 class="modal-header" id="modal-title">Yeni Ürün</h3>
-        <form class="modal-form">
-          <label>Başlık</label>
-          <input id="p-title" type="text" />
+    <!-- ÜRÜN OLUŞTUR/EDİT MODALI (İKİNCİ DÜZEY) -->
+    <div id="product-form-modal" class="modal-backdrop" aria-hidden="true">
+      <div class="modal-content" style="width: min(720px, 92vw)">
+        <div class="modal-header-bar">
+          <h3 id="modal-title">Yeni Ürün</h3>
+          <button id="btn-close-product-form" class="btn icon" title="Kapat">
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <form class="modal-form">
+            <label>Başlık</label>
+            <input id="p-title" type="text" />
 
-          <label>Kategori</label>
-          <input id="p-category" type="text" />
+            <label>Kategori</label>
+            <input id="p-category" type="text" />
 
-          <label>Fiyat (₺)</label>
-          <input id="p-price" type="number" step="0.01" />
+            <label>Fiyat (₺)</label>
+            <input id="p-price" type="number" step="0.01" />
 
-          <label>Stok</label>
-          <input id="p-stock" type="number" />
+            <label>Stok</label>
+            <input id="p-stock" type="number" />
 
-          <label>Rating (0-5)</label>
-          <input id="p-rating" type="number" step="0.1" min="0" max="5" />
+            <label>Rating (0-5)</label>
+            <input id="p-rating" type="number" step="0.1" min="0" max="5" />
 
-          <label>Resim Dosyası</label>
-          <input id="p-image-file" type="file" accept="image/*" />
+            <label>Resim Dosyası</label>
+            <input id="p-image-file" type="file" accept="image/*" />
 
-          <label>Resim URL</label>
-          <input id="p-image" type="text" placeholder="https://..." />
+            <label>Resim URL</label>
+            <input id="p-image" type="text" placeholder="https://..." />
 
-          <label>Açıklama</label>
-          <textarea id="p-desc"></textarea>
+            <label>Açıklama</label>
+            <textarea id="p-desc"></textarea>
 
-          <div class="modal-actions">
-            <button type="button" id="btn-cancel" class="btn ghost btn-cancel">
-              Vazgeç
-            </button>
-            <button type="button" id="btn-save" class="btn primary btn-save">
-              Kaydet
-            </button>
-          </div>
-        </form>
+            <div
+              class="modal-actions"
+              style="
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+                margin-top: 12px;
+              "
+            >
+              <button
+                type="button"
+                id="btn-cancel"
+                class="btn ghost btn-cancel"
+              >
+                Vazgeç
+              </button>
+              <button type="button" id="btn-save" class="btn primary btn-save">
+                Kaydet
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
