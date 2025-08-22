@@ -108,6 +108,8 @@ function productCard(p) {
     : "assets/images/products/placeholder.png";
 
   const cat = (p.category || "").toLowerCase();
+  const outOfStock = Number(p.stock || 0) <= 0; // ← stok kontrolü
+
   return `
   <div class="product-card" data-id="${
     p.id
@@ -120,17 +122,20 @@ function productCard(p) {
       <div class="rating" data-rating="${
         p.rating
       }" aria-label="Ürün puanı">${starsHTML(p.rating)}</div>
+      
     </div>
     <div class="card-footer">
-      <button
-        class="btn add-to-cart"
-        data-id="${p.id}"
-        data-name="${(p.title || "").replace(/"/g, "&quot;")}"
-        data-price="${Number(p.price) || 0}"
-        data-image="${img}"
-      >
-        🛒 Sepete Ekle
-      </button>
+      ${
+        outOfStock
+          ? `<button class="btn disabled" disabled aria-disabled="true">Stokta yok</button>`
+          : `<button
+               class="btn add-to-cart"
+               data-id="${p.id}"
+               data-name="${(p.title || "").replace(/"/g, "&quot;")}"
+               data-price="${Number(p.price) || 0}"
+               data-image="${img}"
+             >🛒 Sepete Ekle</button>`
+      }
     </div>
   </div>`;
 }
@@ -225,6 +230,14 @@ function wireRating() {
 function wireAddToCart() {
   $$(".add-to-cart").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      // Karttaki stok bilgisini oku
+      const card = btn.closest(".product-card");
+      const stockText = card?.querySelector(".stock")?.textContent || "";
+      if (/stokta yok/i.test(stockText)) {
+        showToast("Bu ürün stokta yok.");
+        return;
+      }
+
       if (!userLoggedIn()) {
         const ret = encodeURIComponent(location.href);
         location.href = `login.html?return=${ret}`;
@@ -235,11 +248,8 @@ function wireAddToCart() {
 
       try {
         await addToCartAPI(pid, 1);
-
         const { sum } = await fetchCartAndSum();
-
         window.dispatchEvent(new Event("cart-changed"));
-
         showToast(`${name} sepete eklendi. Toplam: ${fmtTRY(sum)}`);
       } catch (e) {
         alert(e?.message || "Sepete eklenemedi");

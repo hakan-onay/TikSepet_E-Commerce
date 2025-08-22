@@ -545,6 +545,12 @@ footer {
   transform: translateY(1px);
 }
 
+/* Stok durumu */
+.btn.disabled[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* --- Karanlık tema rötuş --- */
 body.dark .product-card {
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
