@@ -82,8 +82,7 @@ function renderOrders(orders = []) {
               item.image_path
                 ? "http://localhost:5000" + item.image_path
                 : "assets/images/placeholder.png"
-            }" 
-                 alt="${item.title || "Ürün"}" width="50" height="50">
+            }" alt="${item.title || "Ürün"}" width="50" height="50">
             <div>
               <p>${item.title || "Ürün"}</p>
               <p>${fmtTRY(item.unit_price)} x ${item.quantity} adet</p>
@@ -103,11 +102,8 @@ function renderOrders(orders = []) {
 
 function fillUserInfo(user) {
   console.log("Kullanıcı bilgileri dolduruluyor:", user);
-
-  // Doğru element ID'lerini kullan
   const userName = $("#u-name");
   const userEmail = $("#u-email");
-
   if (userName) userName.textContent = user.name || "Belirtilmemiş";
   if (userEmail) userEmail.textContent = user.email || "Belirtilmemiş";
 }
@@ -143,8 +139,6 @@ async function loadUserOrders() {
 async function loadProfile() {
   try {
     console.log("Profil yükleniyor...");
-
-    // Önce token kontrolü
     const token = getToken();
     console.log("Token:", token);
 
@@ -154,7 +148,6 @@ async function loadProfile() {
       return;
     }
 
-    // Kullanıcı bilgilerini al
     console.log("Kullanıcı bilgileri isteniyor...");
     const user = await me();
     console.log("Kullanıcı bilgileri alındı:", user);
@@ -163,15 +156,10 @@ async function loadProfile() {
       throw new Error("Kullanıcı bilgileri alınamadı");
     }
 
-    // Kullanıcı bilgilerini göster
     fillUserInfo(user);
-
-    // Siparişleri yükle
     await loadUserOrders();
   } catch (error) {
     console.error("Profil yüklenirken hata:", error);
-
-    // Hata mesajını göster (basit versiyon)
     alert(
       "Profil yüklenirken hata oluştu: " +
         error.message +
@@ -181,10 +169,93 @@ async function loadProfile() {
   }
 }
 
+/* ==== Şifre Değiştir Modal ==== */
+function openChangePassModal() {
+  const modal = $("#change-pass-modal");
+  if (!modal) return;
+  const err = $("#change-pass-error");
+  const ok = $("#change-pass-success");
+  if (err) err.style.display = "none";
+  if (ok) ok.style.display = "none";
+  const cp = $("#current-password");
+  const np = $("#new-password");
+  const np2 = $("#new-password2");
+  if (cp) cp.value = "";
+  if (np) np.value = "";
+  if (np2) np2.value = "";
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeChangePassModal() {
+  const modal = $("#change-pass-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function showFormError(msg) {
+  const el = $("#change-pass-error");
+  if (el) {
+    el.textContent = msg || "Bir hata oluştu.";
+    el.style.display = "block";
+  }
+}
+function showFormSuccess(msg) {
+  const el = $("#change-pass-success");
+  if (el) {
+    el.textContent = msg || "Şifre başarıyla güncellendi.";
+    el.style.display = "block";
+  }
+}
+
+async function handleChangePassword(e) {
+  e.preventDefault();
+  const cur = $("#current-password")?.value?.trim() || "";
+  const npw = $("#new-password")?.value?.trim() || "";
+  const npw2 = $("#new-password2")?.value?.trim() || "";
+
+  const err = $("#change-pass-error");
+  const ok = $("#change-pass-success");
+  if (err) err.style.display = "none";
+  if (ok) ok.style.display = "none";
+
+  if (npw.length < 6) {
+    showFormError("Yeni şifre en az 6 karakter olmalı.");
+    return;
+  }
+  if (npw !== npw2) {
+    showFormError("Yeni şifreler eşleşmiyor.");
+    return;
+  }
+  if (cur === npw) {
+    showFormError("Yeni şifre mevcut şifreyle aynı olamaz.");
+    return;
+  }
+
+  try {
+    await api("/auth/change-password", {
+      method: "PUT",
+      auth: true,
+      body: { current_password: cur, new_password: npw },
+    });
+    showFormSuccess(
+      "Şifre güncellendi. Bir sonraki girişinizde yeni şifreyi kullanın."
+    );
+    setTimeout(() => {
+      closeChangePassModal();
+    }, 1200);
+  } catch (err0) {
+    console.error(err0);
+    const msg = err0?.message || "Şifre güncellenemedi.";
+    showFormError(msg);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM yüklendi, profil sayfası başlatılıyor...");
 
-  // Çıkış butonunu dinle
+  // Çıkış
   const logoutBtn = $("#logout-btn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
@@ -194,6 +265,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // Şifre Değiştir aç/kapat
+  $("#change-pass-btn")?.addEventListener("click", openChangePassModal);
+  $("#cancel-change-pass")?.addEventListener("click", closeChangePassModal);
+  $("#change-pass-modal .modal-backdrop")?.addEventListener(
+    "click",
+    closeChangePassModal
+  );
+
+  // Form submit
+  $("#change-pass-form")?.addEventListener("submit", handleChangePassword);
 
   // Profili yükle
   loadProfile();

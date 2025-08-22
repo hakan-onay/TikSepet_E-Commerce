@@ -1134,6 +1134,7 @@ body.dark .login-container {
   border-radius: 16px;
   box-shadow: var(--box-shadow);
 }
+
 .profile-header {
   display: flex;
   align-items: center;
@@ -1146,20 +1147,8 @@ body.dark .login-container {
   color: var(--primary);
   margin: 0;
 }
-.logout-btn {
-  background: #ff5252;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
-  transition: opacity var(--transition), transform 0.2s;
-}
-.logout-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
+
+/* Profil Kartı */
 .profile-card {
   background: var(--card-bg);
   border-radius: 12px;
@@ -1171,6 +1160,8 @@ body.dark .login-container {
 .profile-line {
   margin: 6px 0;
 }
+
+/* Siparişler */
 .orders {
   margin-top: 10px;
 }
@@ -1192,10 +1183,8 @@ body.dark .login-container {
   padding: 14px;
   box-shadow: var(--shadow);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
-  flex-wrap: wrap;
 }
 .order-info {
   line-height: 1.7;
@@ -1222,8 +1211,125 @@ body.dark .login-container {
 .empty-state a {
   color: var(--primary);
 }
+
+/* Dark Mode uyumu */
 body.dark .profile-container {
   background: #2c2c2c;
+}
+
+/* Profil Eylemleri (butonlar) */
+.profile-actions {
+  display: flex;
+  gap: 8px;
+}
+.profile-actions button {
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-color, #ddd);
+  transition: opacity var(--transition), transform 0.2s;
+}
+.profile-actions button:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.change-pass-btn {
+  background: var(--secondary, #fff);
+  color: var(--text-color);
+}
+.logout-btn {
+  background: #ff5252;
+  color: #fff;
+  border: none;
+}
+
+/* Modal */
+.modal.hidden {
+  display: none;
+}
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+.modal-content {
+  position: relative;
+  z-index: 1001;
+  width: min(92vw, 420px);
+  background: var(--card-bg, #fff);
+  color: var(--text-color, #222);
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  animation: slideUp 0.3s ease;
+}
+.modal-content form {
+  display: grid;
+  gap: 12px;
+}
+.modal-content input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 10px;
+  background: var(--secondary, #fff);
+  color: var(--text-color, #222);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.modal-actions button {
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.modal-actions .primary {
+  background: var(--primary, #00cfc1);
+  color: #fff;
+  border: none;
+}
+
+.form-error {
+  color: #b00020;
+}
+.form-success {
+  color: #0a7a2f;
+}
+.form-hint {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Animasyonlar */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* =========================

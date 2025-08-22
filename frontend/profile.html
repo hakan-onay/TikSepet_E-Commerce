@@ -19,7 +19,6 @@
     <div id="loader">Yükleniyor...</div>
 
     <!-- Navbar -->
-    <!-- Navbar -->
     <header>
       <nav class="navbar">
         <!-- Logo -->
@@ -84,7 +83,12 @@
     <main class="profile-container">
       <div class="profile-header">
         <h1>Profilim</h1>
-        <button class="logout-btn" id="logout-btn">Çıkış Yap</button>
+        <div class="profile-actions">
+          <button class="change-pass-btn" id="change-pass-btn">
+            Şifre Değiştir
+          </button>
+          <button class="logout-btn" id="logout-btn">Çıkış Yap</button>
+        </div>
       </div>
 
       <section class="profile-card" aria-live="polite">
@@ -117,6 +121,72 @@
         <p>&copy; 2025 TikSepet E-Ticaret Sitesi created by Hakan Onay</p>
       </div>
     </footer>
+
+    <!-- Şifre Değiştir Modal -->
+    <div
+      id="change-pass-modal"
+      class="modal hidden"
+      aria-hidden="true"
+      role="dialog"
+      aria-labelledby="change-pass-title"
+    >
+      <div class="modal-content">
+        <h3 style="text-align: center;" id="change-pass-title">Şifre Değiştir</h3>
+
+        <form id="change-pass-form">
+          <label>
+            Mevcut Şifre
+            <input
+              type="password"
+              id="current-password"
+              name="current_password"
+              required
+              minlength="6"
+            />
+          </label>
+
+          <label>
+            Yeni Şifre
+            <input
+              type="password"
+              id="new-password"
+              name="new_password"
+              required
+              minlength="6"
+            />
+          </label>
+
+          <label>
+            Yeni Şifre (Tekrar)
+            <input
+              type="password"
+              id="new-password2"
+              name="new_password2"
+              required
+              minlength="6"
+            />
+          </label>
+
+          <div class="modal-actions">
+            <button type="button" id="cancel-change-pass">Vazgeç</button>
+            <button type="submit" class="primary">Güncelle</button>
+          </div>
+
+          <p class="form-hint">Şifre en az 6 karakter olmalı.</p>
+          <p
+            id="change-pass-error"
+            class="form-error"
+            style="display: none"
+          ></p>
+          <p
+            id="change-pass-success"
+            class="form-success"
+            style="display: none"
+          ></p>
+        </form>
+      </div>
+      <div class="modal-backdrop"></div>
+    </div>
 
     <!-- Scriptler -->
     <script src="js/main.js"></script>
